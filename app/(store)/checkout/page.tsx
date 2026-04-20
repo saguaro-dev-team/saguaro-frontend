@@ -1,0 +1,517 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { ChevronRight, ShoppingBag, CreditCard, Truck, CheckCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Separator } from '@/components/ui/separator'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/lib/auth-context'
+import { formatPrice } from '@/lib/store-data'
+
+const regiones = [
+  'Region Metropolitana',
+  'Valparaiso',
+  'Biobio',
+  'Maule',
+  'Araucania',
+  'OHiggins',
+  'Los Lagos',
+  'Coquimbo',
+  'Antofagasta',
+  'Los Rios',
+  'Tarapaca',
+  'Atacama',
+  'Nuble',
+  'Magallanes',
+  'Arica y Parinacota',
+  'Aysen',
+]
+
+export default function CheckoutPage() {
+  const router = useRouter()
+  const { items, total, clearCart } = useCart()
+  const { isAuthenticated, user } = useAuth()
+  
+  const [step, setStep] = useState(1)
+  const [shippingMethod, setShippingMethod] = useState('standard')
+  const [paymentMethod, setPaymentMethod] = useState('webpay')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [orderComplete, setOrderComplete] = useState(false)
+
+  const [formData, setFormData] = useState({
+    email: user?.email || '',
+    nombre: user?.nombre || '',
+    apellido: user?.apellido || '',
+    telefono: user?.telefono || '',
+    calle: '',
+    numero: '',
+    departamento: '',
+    comuna: '',
+    region: '',
+    codigoPostal: '',
+  })
+
+  const shippingCost = total >= 50000 ? 0 : shippingMethod === 'express' ? 7990 : 4990
+  const finalTotal = total + shippingCost
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async () => {
+    setIsProcessing(true)
+    // Simulate payment processing
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    setIsProcessing(false)
+    setOrderComplete(true)
+    clearCart()
+  }
+
+  if (items.length === 0 && !orderComplete) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
+        <ShoppingBag className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Tu carrito esta vacio</h1>
+        <p className="text-muted-foreground mb-6">Agrega productos para continuar con la compra</p>
+        <Button asChild>
+          <Link href="/categoria/hombre">Explorar Productos</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  if (orderComplete) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
+        <div className="text-center max-w-md">
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+            <CheckCircle className="h-10 w-10 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Pedido Confirmado!</h1>
+          <p className="text-muted-foreground mb-2">
+            Gracias por tu compra. Hemos enviado un correo de confirmacion a {formData.email}
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Numero de pedido: <span className="font-mono font-medium">SAG-{Date.now().toString().slice(-8)}</span>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild>
+              <Link href="/">Volver al Inicio</Link>
+            </Button>
+            {isAuthenticated && (
+              <Button variant="outline" asChild>
+                <Link href="/pedidos">Ver Mis Pedidos</Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen py-8">
+      <div className="mx-auto max-w-7xl px-4">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
+          <Link href="/" className="hover:text-primary">Inicio</Link>
+          <ChevronRight className="h-4 w-4" />
+          <span className="text-foreground">Checkout</span>
+        </nav>
+
+        <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
+
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center mb-8">
+          {[
+            { num: 1, label: 'Datos' },
+            { num: 2, label: 'Envio' },
+            { num: 3, label: 'Pago' },
+          ].map((s, i) => (
+            <div key={s.num} className="flex items-center">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full font-medium ${
+                  step >= s.num
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {s.num}
+              </div>
+              <span className={`ml-2 hidden sm:block ${step >= s.num ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {s.label}
+              </span>
+              {i < 2 && (
+                <div className={`mx-4 h-0.5 w-12 sm:w-24 ${step > s.num ? 'bg-primary' : 'bg-muted'}`} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Main Form */}
+          <div className="lg:col-span-2">
+            {/* Step 1: Contact & Address */}
+            {step === 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Datos de Contacto y Direccion</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {!isAuthenticated && (
+                    <div className="rounded-lg bg-muted/50 p-4 text-sm">
+                      Ya tienes cuenta?{' '}
+                      <Link href="/login" className="text-primary hover:underline">
+                        Inicia sesion
+                      </Link>{' '}
+                      para una compra mas rapida.
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telefono">Telefono</Label>
+                      <Input
+                        id="telefono"
+                        name="telefono"
+                        type="tel"
+                        value={formData.telefono}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="nombre">Nombre</Label>
+                      <Input
+                        id="nombre"
+                        name="nombre"
+                        value={formData.nombre}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="apellido">Apellido</Label>
+                      <Input
+                        id="apellido"
+                        name="apellido"
+                        value={formData.apellido}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="calle">Calle</Label>
+                      <Input
+                        id="calle"
+                        name="calle"
+                        value={formData.calle}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numero">Numero</Label>
+                      <Input
+                        id="numero"
+                        name="numero"
+                        value={formData.numero}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="departamento">Departamento (opcional)</Label>
+                      <Input
+                        id="departamento"
+                        name="departamento"
+                        value={formData.departamento}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comuna">Comuna</Label>
+                      <Input
+                        id="comuna"
+                        name="comuna"
+                        value={formData.comuna}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="region">Region</Label>
+                      <Select
+                        value={formData.region}
+                        onValueChange={(value) => setFormData({ ...formData, region: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una region" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regiones.map((region) => (
+                            <SelectItem key={region} value={region}>
+                              {region}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="codigoPostal">Codigo Postal</Label>
+                      <Input
+                        id="codigoPostal"
+                        name="codigoPostal"
+                        value={formData.codigoPostal}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  <Button className="w-full" onClick={() => setStep(2)}>
+                    Continuar al Envio
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 2: Shipping */}
+            {step === 2 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5" />
+                    Metodo de Envio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <RadioGroup value={shippingMethod} onValueChange={setShippingMethod}>
+                    <div
+                      className={`flex items-center justify-between rounded-lg border p-4 cursor-pointer ${
+                        shippingMethod === 'standard' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setShippingMethod('standard')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem value="standard" id="standard" />
+                        <div>
+                          <Label htmlFor="standard" className="cursor-pointer font-medium">
+                            Envio Estandar
+                          </Label>
+                          <p className="text-sm text-muted-foreground">5-10 dias habiles</p>
+                        </div>
+                      </div>
+                      <span className="font-medium">
+                        {total >= 50000 ? 'Gratis' : formatPrice(4990)}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`flex items-center justify-between rounded-lg border p-4 cursor-pointer ${
+                        shippingMethod === 'express' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setShippingMethod('express')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem value="express" id="express" />
+                        <div>
+                          <Label htmlFor="express" className="cursor-pointer font-medium">
+                            Envio Express
+                          </Label>
+                          <p className="text-sm text-muted-foreground">2-3 dias habiles</p>
+                        </div>
+                      </div>
+                      <span className="font-medium">{formatPrice(7990)}</span>
+                    </div>
+                  </RadioGroup>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button variant="outline" onClick={() => setStep(1)}>
+                      Volver
+                    </Button>
+                    <Button className="flex-1" onClick={() => setStep(3)}>
+                      Continuar al Pago
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === 3 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Metodo de Pago
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <div
+                      className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer ${
+                        paymentMethod === 'webpay' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setPaymentMethod('webpay')}
+                    >
+                      <RadioGroupItem value="webpay" id="webpay" />
+                      <div>
+                        <Label htmlFor="webpay" className="cursor-pointer font-medium">
+                          Webpay Plus
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Pago seguro con tarjeta de credito o debito
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer ${
+                        paymentMethod === 'transfer' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setPaymentMethod('transfer')}
+                    >
+                      <RadioGroupItem value="transfer" id="transfer" />
+                      <div>
+                        <Label htmlFor="transfer" className="cursor-pointer font-medium">
+                          Transferencia Bancaria
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Deposito o transferencia directa
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer ${
+                        paymentMethod === 'mercadopago' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setPaymentMethod('mercadopago')}
+                    >
+                      <RadioGroupItem value="mercadopago" id="mercadopago" />
+                      <div>
+                        <Label htmlFor="mercadopago" className="cursor-pointer font-medium">
+                          Mercado Pago
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Paga en cuotas sin interes
+                        </p>
+                      </div>
+                    </div>
+                  </RadioGroup>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button variant="outline" onClick={() => setStep(2)}>
+                      Volver
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={handleSubmit}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? 'Procesando...' : `Pagar ${formatPrice(finalTotal)}`}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Order Summary */}
+          <div>
+            <Card className="sticky top-24">
+              <CardHeader>
+                <CardTitle>Resumen del Pedido</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <div
+                      key={`${item.producto.id}-${item.talla}-${item.color}`}
+                      className="flex gap-3"
+                    >
+                      <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.producto.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Talla: {item.talla} | Color: {item.color} | Cant: {item.cantidad}
+                        </p>
+                        <p className="text-sm font-medium">
+                          {formatPrice(item.producto.precio * item.cantidad)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatPrice(total)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Envio</span>
+                    <span>{shippingCost === 0 ? 'Gratis' : formatPrice(shippingCost)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-medium text-base">
+                    <span>Total</span>
+                    <span>{formatPrice(finalTotal)}</span>
+                  </div>
+                </div>
+
+                {total < 50000 && (
+                  <p className="mt-4 text-xs text-muted-foreground text-center">
+                    Agrega {formatPrice(50000 - total)} mas para obtener envio gratis!
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

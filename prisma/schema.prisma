@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model auditoria_stock {
+  id_log            Int        @id @default(autoincrement())
+  id_producto       Int?
+  cantidad_anterior Int?
+  cantidad_nueva    Int?
+  motivo            String?    @db.VarChar(100)
+  fecha             DateTime?  @default(now()) @db.Timestamp(6)
+  productos         productos? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model categorias {
+  id_categoria Int         @id @default(autoincrement())
+  nombre       String      @unique @db.VarChar(50)
+  descripcion  String?
+  is_active    Boolean?    @default(true)
+  productos    productos[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model detalle_pedidos {
+  id_detalle      Int        @id @default(autoincrement())
+  id_pedido       Int?
+  id_producto     Int?
+  cantidad        Int
+  precio_unitario Int
+  is_active       Boolean?   @default(true)
+  pedidos         pedidos?   @relation(fields: [id_pedido], references: [id_pedido], onDelete: NoAction, onUpdate: NoAction)
+  productos       productos? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model direcciones {
+  id_direccion Int       @id @default(autoincrement())
+  id_usuario   Int?
+  calle        String    @db.VarChar(100)
+  numero       String    @db.VarChar(10)
+  comuna       String    @db.VarChar(50)
+  region       String    @db.VarChar(50)
+  detalles     String?
+  is_active    Boolean?  @default(true)
+  usuarios     usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pedidos {
+  id_pedido          Int               @id @default(autoincrement())
+  id_usuario         Int?
+  fecha_pedido       DateTime?         @default(now()) @db.Timestamp(6)
+  total_pagado       Int
+  estado_pedido      String?           @default("Pendiente") @db.VarChar(25)
+  token_webpay       String?           @unique @db.VarChar(100)
+  authorization_code String?           @db.VarChar(20)
+  is_active          Boolean?          @default(true)
+  detalle_pedidos    detalle_pedidos[]
+  usuarios           usuarios?         @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model productos {
+  id_producto     Int               @id @default(autoincrement())
+  id_categoria    Int?
+  nombre          String            @db.VarChar(100)
+  descripcion     String?
+  precio_normal   Int
+  precio_oferta   Int?
+  stock           Int               @default(0)
+  imagen_url      String?           @db.VarChar(255)
+  talla           String?           @db.VarChar(10)
+  color           String?           @db.VarChar(20)
+  is_novedad      Boolean?          @default(false)
+  is_recomendado  Boolean?          @default(false)
+  is_oferta       Boolean?          @default(false)
+  is_active       Boolean?          @default(true)
+  fecha_creacion  DateTime?         @default(now()) @db.Timestamp(6)
+  auditoria_stock auditoria_stock[]
+  detalle_pedidos detalle_pedidos[]
+  categorias      categorias?       @relation(fields: [id_categoria], references: [id_categoria], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model usuarios {
+  id_usuario      Int           @id @default(autoincrement())
+  nombre_completo String        @db.VarChar(100)
+  rut             String        @unique @db.VarChar(12)
+  email           String        @unique @db.VarChar(100)
+  password_hash   String
+  telefono        String?       @db.VarChar(20)
+  genero          String?       @db.VarChar(20)
+  fecha_nacimiento DateTime?    @db.Date
+  rol             String?       @db.VarChar(20)
+  is_active       Boolean?      @default(true)
+  fecha_registro  DateTime?     @default(now()) @db.Timestamp(6)
+  direcciones     direcciones[]
+  pedidos         pedidos[]
+}
