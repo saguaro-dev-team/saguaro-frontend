@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { CartItem, Product } from './store-types'
 
 interface CartContextType {
@@ -21,6 +21,27 @@ const CartContext = createContext<CartContextType | null>(null)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('saguaro_cart')
+      if (saved) {
+        setItems(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.error('Error loading cart from storage', e)
+    }
+    setIsLoaded(true)
+  }, [])
+
+  // Save to local storage whenever items change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('saguaro_cart', JSON.stringify(items))
+    }
+  }, [items, isLoaded])
 
   const itemCount = items.reduce((acc, item) => acc + item.cantidad, 0)
   const total = items.reduce((acc, item) => acc + item.producto.precio * item.cantidad, 0)

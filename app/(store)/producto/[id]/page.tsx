@@ -13,9 +13,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { getProductById, formatPrice, products } from '@/lib/store-data'
+import { useEffect } from 'react'
+import { getProductById, getProductsByCategoryStr } from '@/app/actions/products'
+import { formatPrice } from '@/lib/store-data'
 import { useCart } from '@/lib/cart-context'
 import { ProductCard } from '@/components/store/product-card'
+import type { Product } from '@/lib/store-types'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -29,12 +32,33 @@ const categoryNames: Record<string, string> = {
 
 export default function ProductPage({ params }: PageProps) {
   const { id } = use(params)
-  const product = getProductById(id)
   const { addItem } = useCart()
 
+  const [product, setProduct] = useState<Product | null>(null)
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
   const [selectedTalla, setSelectedTalla] = useState<number | null>(null)
-  const [selectedColor, setSelectedColor] = useState<string>(product?.colores[0] || '')
+  const [selectedColor, setSelectedColor] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
+
+  useEffect(() => {
+    setLoading(true)
+    getProductById(id).then(data => {
+      if (data) {
+        setProduct(data)
+        setSelectedColor(data.colores[0] || '')
+        getProductsByCategoryStr(data.categoria).then(catData => {
+          setRelatedProducts(catData.filter(p => p.id !== data.id).slice(0, 4))
+        })
+      }
+      setLoading(false)
+    })
+  }, [id])
+
+  if (loading) {
+    return <div className="min-h-screen py-16 text-center">Cargando producto...</div>
+  }
 
   if (!product) {
     notFound()
@@ -46,10 +70,6 @@ export default function ProductPage({ params }: PageProps) {
     if (!selectedTalla) return
     addItem(product, selectedTalla, selectedColor, quantity)
   }
-
-  const relatedProducts = products
-    .filter((p) => p.categoria === product.categoria && p.id !== product.id)
-    .slice(0, 4)
 
   const getColorStyle = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -90,9 +110,13 @@ export default function ProductPage({ params }: PageProps) {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Product Image */}
           <div className="relative aspect-square rounded-2xl bg-muted overflow-hidden">
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-              <ShoppingBag className="h-32 w-32 text-muted-foreground/20" />
-            </div>
+            {product.imagenes && product.imagenes[0] && product.imagenes[0] !== '/placeholder.jpg' ? (
+              <img src={product.imagenes[0]} alt={product.nombre} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                <ShoppingBag className="h-32 w-32 text-muted-foreground/20" />
+              </div>
+            )}
 
             {/* Badges */}
             <div className="absolute left-4 top-4 flex flex-col gap-2">

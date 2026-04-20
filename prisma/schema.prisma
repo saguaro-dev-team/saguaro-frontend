@@ -75,6 +75,7 @@ model productos {
   imagen_url      String?           @db.VarChar(255)
   talla           String?           @db.VarChar(10)
   color           String?           @db.VarChar(20)
+  tipo            String?           @default("casual") @db.VarChar(50)
   is_novedad      Boolean?          @default(false)
   is_recomendado  Boolean?          @default(false)
   is_oferta       Boolean?          @default(false)

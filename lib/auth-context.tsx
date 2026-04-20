@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { User, UserRole } from './store-types'
 import { registerUser, loginUser } from '@/app/actions/auth'
 
@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{success: boolean, error?: string}>
   register: (data: RegisterData) => Promise<{success: boolean, error?: string}>
   logout: () => void
+  updateUser: (data: Partial<User>) => void
 }
 
 interface RegisterData {
@@ -50,6 +51,21 @@ const mockUsers: (User & { password: string })[] = [
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+    const saved = localStorage.getItem('saguaro_user')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (parsed.fechaRegistro) parsed.fechaRegistro = new Date(parsed.fechaRegistro)
+        setUser(parsed)
+      } catch (e) {
+        console.error("Error parsing user from localstorage", e)
+      }
+    }
+  }, [])
 
   const isAuthenticated = user !== null
   const isAdmin = user?.role === 'administrador'
@@ -59,14 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await loginUser(email, password)
       
       if (result.success && result.user) {
-        setUser({
+        const newUser = {
           id: String(result.user.id),
           email: result.user.email,
           nombre: result.user.nombre,
           apellido: result.user.apellido,
           role: result.user.role as UserRole,
           fechaRegistro: result.user.fechaRegistro as Date,
-        })
+        }
+        setUser(newUser)
+        if (typeof window !== 'undefined') localStorage.setItem('saguaro_user', JSON.stringify(newUser))
         return { success: true }
       }
       return { success: false, error: result.error }
@@ -81,14 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await registerUser(data)
       
       if (result.success && result.user) {
-        setUser({
+        const newUser = {
           id: String(result.user.id),
           email: result.user.email,
           nombre: result.user.nombre,
           apellido: result.user.apellido,
-          role: 'cliente',
+          role: 'cliente' as UserRole,
           fechaRegistro: new Date(),
-        })
+        }
+        setUser(newUser)
+        if (typeof window !== 'undefined') localStorage.setItem('saguaro_user', JSON.stringify(newUser))
         return { success: true }
       }
       return { success: false, error: result.error }
@@ -100,6 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null)
+    if (typeof window !== 'undefined') localStorage.removeItem('saguaro_user')
+  }, [])
+
+  const updateUser = useCallback((data: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null
+      const next = { ...prev, ...data }
+      if (typeof window !== 'undefined') localStorage.setItem('saguaro_user', JSON.stringify(next))
+      return next
+    })
   }, [])
 
   return (
@@ -111,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

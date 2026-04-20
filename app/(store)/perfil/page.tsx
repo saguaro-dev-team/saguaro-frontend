@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth-context'
+import { getUserAddresses, addAddress, updateUserProfile, getUserProfile } from '@/app/actions/profile'
 
 // Mock orders data
 const mockOrders = [
@@ -33,23 +35,77 @@ const mockOrders = [
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, updateUser } = useAuth()
   
   const [formData, setFormData] = useState({
     nombre: user?.nombre || '',
     apellido: user?.apellido || '',
     email: user?.email || '',
-    telefono: user?.telefono || '',
+    rut: '',
+    telefono: '',
+    genero: '',
+    fecha_nacimiento: ''
   })
+  
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: ''
+  })
+  
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  // Direcciones State
+  const [direcciones, setDirecciones] = useState<any[]>([])
+  const [isAddingAddress, setIsAddingAddress] = useState(false)
+  const [newAddress, setNewAddress] = useState({ calle: '', numero: '', comuna: '', region: '', detalles: '' })
+  const [addressLoading, setAddressLoading] = useState(false)
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
+    } else if (user) {
+      getUserAddresses(user.id).then((res) => {
+        if (res.success && res.direcciones) {
+          setDirecciones(res.direcciones)
+        }
+      })
+      getUserProfile(user.id).then((res) => {
+        if (res.success && res.profile) {
+          setFormData(prev => ({
+            ...prev,
+            rut: res.profile.rut || '',
+            telefono: res.profile.telefono || '',
+            genero: res.profile.genero || '',
+            fecha_nacimiento: res.profile.fecha_nacimiento ? new Date(res.profile.fecha_nacimiento).toISOString().split('T')[0] : ''
+          }))
+        }
+      })
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user, router])
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+    setAddressLoading(true)
+    const res = await addAddress({
+      userId: user.id,
+      calle: newAddress.calle,
+      numero: newAddress.numero,
+      comuna: newAddress.comuna,
+      region: newAddress.region,
+      detalles: newAddress.detalles
+    })
+    
+    if (res.success && res.direccion) {
+      setDirecciones([res.direccion, ...direcciones])
+      setIsAddingAddress(false)
+      setNewAddress({ calle: '', numero: '', comuna: '', region: '', detalles: '' })
+    }
+    setAddressLoading(false)
+  }
 
   if (!isAuthenticated) {
     return null
@@ -58,14 +114,41 @@ export default function ProfilePage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
     setSaveSuccess(false)
+    setSaveError('')
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswords({ ...passwords, [e.target.name]: e.target.value })
+    setSaveSuccess(false)
+    setSaveError('')
   }
 
   const handleSave = async () => {
+    if (!user) return
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    setSaveSuccess(false)
+    setSaveError('')
+    
+    const res = await updateUserProfile({
+      userId: user.id,
+      nombre: formData.nombre,
+      apellido: formData.apellido,
+      telefono: formData.telefono,
+      genero: formData.genero,
+      fecha_nacimiento: formData.fecha_nacimiento,
+      currentPassword: passwords.currentPassword,
+      newPassword: passwords.newPassword
+    })
+    
+    if (res.success) {
+      updateUser({ nombre: formData.nombre, apellido: formData.apellido })
+      setSaveSuccess(true)
+      setPasswords({ currentPassword: '', newPassword: '' })
+    } else {
+      setSaveError(res.error || 'Error al guardar los datos')
+    }
+    
     setIsSaving(false)
-    setSaveSuccess(true)
   }
 
   const handleLogout = () => {
@@ -146,6 +229,11 @@ export default function ProfilePage() {
                     Datos actualizados correctamente
                   </div>
                 )}
+                {saveError && (
+                  <div className="rounded-lg bg-red-100 p-3 text-sm text-red-800">
+                    {saveError}
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -176,18 +264,56 @@ export default function ProfilePage() {
                       name="email"
                       type="email"
                       value={formData.email}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rut">RUT</Label>
+                    <Input
+                      id="rut"
+                      name="rut"
+                      value={formData.rut}
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono">Teléfono</Label>
+                    <Input
+                      id="telefono"
+                      name="telefono"
+                      value={formData.telefono}
                       onChange={handleChange}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="telefono">Telefono</Label>
+                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
                     <Input
-                      id="telefono"
-                      name="telefono"
-                      type="tel"
-                      value={formData.telefono}
+                      id="fecha_nacimiento"
+                      name="fecha_nacimiento"
+                      type="date"
+                      value={formData.fecha_nacimiento}
                       onChange={handleChange}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="genero">Género</Label>
+                    <Select value={formData.genero} onValueChange={(val) => {
+                      setFormData({ ...formData, genero: val })
+                      setSaveSuccess(false)
+                      setSaveError('')
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="femenino">Femenino</SelectItem>
+                        <SelectItem value="otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -201,11 +327,11 @@ export default function ProfilePage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Contraseña Actual</Label>
-                      <Input id="currentPassword" type="password" />
+                      <Input id="currentPassword" name="currentPassword" type="password" value={passwords.currentPassword} onChange={handlePasswordChange} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                      <Input id="newPassword" type="password" />
+                      <Input id="newPassword" name="newPassword" type="password" value={passwords.newPassword} onChange={handlePasswordChange} />
                     </div>
                   </div>
                 </div>
@@ -274,30 +400,74 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="rounded-lg border p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">Casa</h3>
-                          <Badge variant="secondary">Principal</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Av. Providencia 1234, Depto 56
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Providencia, Region Metropolitana
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Editar
-                      </Button>
+                  {direcciones.length === 0 && !isAddingAddress && (
+                    <div className="text-center py-6">
+                      <MapPin className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
+                      <p className="text-muted-foreground">No tienes direcciones guardadas</p>
                     </div>
-                  </div>
+                  )}
 
-                  <Button variant="outline" className="w-full">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Agregar Nueva Direccion
-                  </Button>
+                  {direcciones.map((dir, idx) => (
+                    <div key={dir.id_direccion} className="rounded-lg border p-4 bg-muted/20">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium">{dir.calle} {dir.numero}</h3>
+                            {idx === 0 && <Badge variant="secondary">Principal</Badge>}
+                          </div>
+                          {dir.detalles && (
+                            <p className="text-sm text-muted-foreground">
+                              {dir.detalles}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            {dir.comuna}, {dir.region}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {isAddingAddress ? (
+                    <form onSubmit={handleSaveAddress} className="rounded-lg border p-4 space-y-4 bg-muted/10">
+                      <h3 className="font-medium text-lg">Nueva Dirección</h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="calle">Calle</Label>
+                          <Input required id="calle" value={newAddress.calle} onChange={(e) => setNewAddress({...newAddress, calle: e.target.value})} placeholder="Ej. Av. Providencia" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="numero">Número</Label>
+                          <Input required id="numero" value={newAddress.numero} onChange={(e) => setNewAddress({...newAddress, numero: e.target.value})} placeholder="1234" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="detalles">Detalles (Depto, block, indicaciones)</Label>
+                        <Input id="detalles" value={newAddress.detalles} onChange={(e) => setNewAddress({...newAddress, detalles: e.target.value})} placeholder="Depto 402, Torre B..." />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="comuna">Comuna</Label>
+                          <Input required id="comuna" value={newAddress.comuna} onChange={(e) => setNewAddress({...newAddress, comuna: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="region">Región</Label>
+                          <Input required id="region" value={newAddress.region} onChange={(e) => setNewAddress({...newAddress, region: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button type="button" variant="outline" onClick={() => setIsAddingAddress(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={addressLoading}>
+                          {addressLoading ? 'Guardando...' : 'Guardar Dirección'}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <Button variant="outline" className="w-full border-dashed py-8" onClick={() => setIsAddingAddress(true)}>
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Agregar Nueva Dirección
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

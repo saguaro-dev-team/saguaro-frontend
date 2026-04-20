@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ShoppingBag, User, Menu, X, Search, ChevronDown, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -55,8 +55,13 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { itemCount, openCart } = useCart()
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -122,12 +127,19 @@ export function Header() {
             </Button>
 
             {/* User menu */}
-            {isAuthenticated ? (
+            {!mounted ? (
+              <Button variant="ghost" className="gap-2 px-2 invisible">
+                <User className="h-5 w-5" />
+                <span className="hidden sm:inline font-medium">Cargando...</span>
+              </Button>
+            ) : isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" className="gap-2 px-2">
                     <User className="h-5 w-5" />
-                    <span className="sr-only">Mi cuenta</span>
+                    <span className="hidden sm:inline font-medium">
+                      {isAdmin ? 'Admin' : `Hola, ${user?.nombre}`}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -146,7 +158,7 @@ export function Header() {
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/admin" className="text-primary font-medium">
+                        <Link href="/admin/productos" className="text-primary font-medium">
                           Panel de Administracion
                         </Link>
                       </DropdownMenuItem>
@@ -159,10 +171,10 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" asChild className="gap-2 px-2">
                 <Link href="/login">
                   <User className="h-5 w-5" />
-                  <span className="sr-only">Iniciar sesion</span>
+                  <span className="hidden sm:inline font-medium">Iniciar sesión</span>
                 </Link>
               </Button>
             )}

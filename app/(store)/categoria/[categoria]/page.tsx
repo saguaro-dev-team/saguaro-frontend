@@ -22,8 +22,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ProductCard } from '@/components/store/product-card'
-import { getProductsByCategory, products } from '@/lib/store-data'
-import type { ProductCategory, ProductType } from '@/lib/store-types'
+import { useEffect } from 'react'
+import { getProductsByCategoryStr } from '@/app/actions/products'
+import type { Product, ProductCategory, ProductType } from '@/lib/store-types'
 
 const categoryNames: Record<string, string> = {
   hombre: 'Hombre',
@@ -60,6 +61,26 @@ export default function CategoryPage({ params }: PageProps) {
   const { categoria } = use(params)
   const searchParams = useSearchParams()
   
+  const [dbProducts, setDbProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setErrorMsg(null)
+    getProductsByCategoryStr(categoria)
+      .then(data => {
+        if (!data) throw new Error('No data returned')
+        setDbProducts(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error("Error fetching products:", err)
+        setErrorMsg(err.message || 'Unknown error')
+        setLoading(false)
+      })
+  }, [categoria])
+  
   const [selectedTypes, setSelectedTypes] = useState<ProductType[]>(() => {
     const tipo = searchParams.get('tipo')
     return tipo ? [tipo as ProductType] : []
@@ -69,7 +90,7 @@ export default function CategoryPage({ params }: PageProps) {
   const [showOnlyDiscount, setShowOnlyDiscount] = useState(false)
 
   const categoryProducts = useMemo(() => {
-    let filtered = getProductsByCategory(categoria as ProductCategory)
+    let filtered = [...dbProducts]
 
     // Filter by type
     if (selectedTypes.length > 0) {
@@ -102,7 +123,7 @@ export default function CategoryPage({ params }: PageProps) {
     }
 
     return filtered
-  }, [categoria, selectedTypes, sortBy, showOnlyNew, showOnlyDiscount])
+  }, [dbProducts, categoria, selectedTypes, sortBy, showOnlyNew, showOnlyDiscount])
 
   const toggleType = (type: ProductType) => {
     setSelectedTypes((prev) =>
@@ -125,7 +146,7 @@ export default function CategoryPage({ params }: PageProps) {
         <h3 className="font-semibold mb-3">Tipo de Producto</h3>
         <div className="space-y-2">
           {productTypes.map((type) => {
-            const count = getProductsByCategory(categoria as ProductCategory).filter(
+            const count = dbProducts.filter(
               (p) => p.tipo === type.value
             ).length
             if (count === 0) return null
@@ -259,6 +280,14 @@ export default function CategoryPage({ params }: PageProps) {
             </div>
 
             {/* Active Filters */}
+            {errorMsg && (
+              <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6 border border-destructive/20">
+                <p className="font-semibold">Error al cargar productos:</p>
+                <p>{errorMsg}</p>
+                <p className="text-sm mt-2 opacity-80">Categoría solicitada: {categoria}</p>
+              </div>
+            )}
+            
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2 mb-6">
                 <span className="text-sm text-muted-foreground">Filtros activos:</span>
@@ -300,7 +329,13 @@ export default function CategoryPage({ params }: PageProps) {
             )}
 
             {/* Products Grid */}
-            {categoryProducts.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="aspect-square bg-muted/20 animate-pulse rounded-lg" />
+                ))}
+              </div>
+            ) : categoryProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
                 {categoryProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />

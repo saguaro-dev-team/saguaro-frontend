@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -14,7 +14,13 @@ import { useAuth } from '@/lib/auth-context'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register } = useAuth()
+  const { register, isAuthenticated } = useAuth()
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/perfil')
+    }
+  }, [isAuthenticated, router])
   
   const [formData, setFormData] = useState({
     nombre: '',

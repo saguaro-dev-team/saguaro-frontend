@@ -19,10 +19,13 @@ export function ProductCard({ product }: ProductCardProps) {
     <Card className="group overflow-hidden border-0 shadow-none bg-transparent">
       <Link href={`/producto/${product.id}`}>
         <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-          {/* Placeholder for product image */}
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-            <ShoppingBag className="h-16 w-16 text-muted-foreground/30" />
-          </div>
+          {product.imagenes && product.imagenes[0] && product.imagenes[0] !== '/placeholder.jpg' ? (
+            <img src={product.imagenes[0]} alt={product.nombre} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+              <ShoppingBag className="h-16 w-16 text-muted-foreground/30" />
+            </div>
+          )}
 
           {/* Badges */}
           <div className="absolute left-2 top-2 flex flex-col gap-1">

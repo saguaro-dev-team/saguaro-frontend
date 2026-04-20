@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProductCard } from './product-card'
-import { featuredProducts } from '@/lib/store-data'
+import { getFeaturedProducts } from '@/app/actions/products'
 
 interface FeaturedProductsProps {
   title?: string
@@ -11,12 +11,14 @@ interface FeaturedProductsProps {
   viewAllHref?: string
 }
 
-export function FeaturedProducts({
+export async function FeaturedProducts({
   title = 'Productos Destacados',
   subtitle = 'Los favoritos de nuestros clientes',
   showViewAll = true,
   viewAllHref = '/categoria/hombre',
 }: FeaturedProductsProps) {
+  const featuredProducts = await getFeaturedProducts()
+
   return (
     <section className="py-16 px-4">
       <div className="mx-auto max-w-7xl">

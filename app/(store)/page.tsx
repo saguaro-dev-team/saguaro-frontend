@@ -3,13 +3,15 @@ import { CategoriesSection } from '@/components/store/categories-section'
 import { FeaturedProducts } from '@/components/store/featured-products'
 import { BenefitsSection } from '@/components/store/benefits-section'
 import { NewsletterSection } from '@/components/store/newsletter-section'
-import { newProducts, discountedProducts } from '@/lib/store-data'
+import { getNewProducts, getDiscountedProducts } from '@/app/actions/products'
 import { ProductCard } from '@/components/store/product-card'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const newProducts = await getNewProducts()
+  const discountedProducts = await getDiscountedProducts()
   return (
     <>
       <HeroSection />
