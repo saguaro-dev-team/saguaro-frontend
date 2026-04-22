@@ -23,6 +23,10 @@ interface RegisterData {
   telefono: string
   genero: string
   fecha_nacimiento: string
+  calle?: string
+  numero?: string
+  id_comuna?: number
+  detalles?: string
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)

@@ -10,7 +10,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Saguaro Barefoot Chile - Calzado Ergonomico',
   description: 'Tienda oficial de calzado barefoot y ergonomico en Chile. Descubre comodidad natural para hombre, mujer y ninos.',
-  generator: 'v0.app',
   keywords: ['barefoot', 'calzado ergonomico', 'zapatos naturales', 'saguaro', 'chile'],
   icons: {
     icon: [

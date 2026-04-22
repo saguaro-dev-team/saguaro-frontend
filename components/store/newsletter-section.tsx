@@ -18,7 +18,7 @@ export function NewsletterSection() {
     <section className="bg-primary py-16 px-4">
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="text-2xl font-bold tracking-tight text-primary-foreground sm:text-3xl text-balance">
-          Unete a la comunidad Saguaro
+          Únete a la comunidad Saguaro
         </h2>
         <p className="mt-3 text-primary-foreground/80 text-pretty">
           Recibe ofertas exclusivas, novedades y consejos sobre calzado barefoot
@@ -28,14 +28,14 @@ export function NewsletterSection() {
         {submitted ? (
           <div className="mt-8 rounded-lg bg-primary-foreground/20 p-4">
             <p className="text-primary-foreground font-medium">
-              Gracias por suscribirte! Pronto recibiras noticias nuestras.
+              ¡Gracias por suscribirte! Pronto recibirás noticias nuestras.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <Input
               type="email"
-              placeholder="Tu correo electronico"
+              placeholder="Tu correo electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

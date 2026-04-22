@@ -13,7 +13,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Productos', href: '/admin/productos', icon: Package },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
   { name: 'Clientes', href: '/admin/clientes', icon: Users },
+  { name: 'Blog', href: '/admin/blog', icon: FileText },
   { name: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
   { name: 'Configuracion', href: '/admin/configuracion', icon: Settings },
 ]

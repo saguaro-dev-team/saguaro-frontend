@@ -15,7 +15,9 @@ import {
 } from '@/components/ui/accordion'
 import { useEffect } from 'react'
 import { getProductById, getProductsByCategoryStr } from '@/app/actions/products'
+import { getConfiguracion } from '@/app/actions/admin'
 import { formatPrice } from '@/lib/store-data'
+import { getColorValue } from '@/lib/color-utils'
 import { useCart } from '@/lib/cart-context'
 import { ProductCard } from '@/components/store/product-card'
 import type { Product } from '@/lib/store-types'
@@ -36,6 +38,7 @@ export default function ProductPage({ params }: PageProps) {
 
   const [product, setProduct] = useState<Product | null>(null)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
+  const [storeConfig, setStoreConfig] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   const [selectedTalla, setSelectedTalla] = useState<number | null>(null)
@@ -44,13 +47,19 @@ export default function ProductPage({ params }: PageProps) {
 
   useEffect(() => {
     setLoading(true)
-    getProductById(id).then(data => {
+    Promise.all([
+      getProductById(id),
+      getConfiguracion()
+    ]).then(([data, config]) => {
       if (data) {
         setProduct(data)
         setSelectedColor(data.colores[0] || '')
         getProductsByCategoryStr(data.categoria).then(catData => {
           setRelatedProducts(catData.filter(p => p.id !== data.id).slice(0, 4))
         })
+      }
+      if (config) {
+        setStoreConfig(config)
       }
       setLoading(false)
     })
@@ -67,28 +76,12 @@ export default function ProductPage({ params }: PageProps) {
   const hasDiscount = product.descuento && product.precioOriginal
 
   const handleAddToCart = () => {
-    if (!selectedTalla) return
+    if (!selectedTalla || !product) return
     addItem(product, selectedTalla, selectedColor, quantity)
   }
 
   const getColorStyle = (color: string) => {
-    const colorMap: Record<string, string> = {
-      Negro: '#000',
-      Blanco: '#fff',
-      Gris: '#6b7280',
-      Azul: '#3b82f6',
-      Verde: '#22c55e',
-      Rojo: '#ef4444',
-      Rosa: '#ec4899',
-      Marron: '#78350f',
-      Cafe: '#78350f',
-      Coral: '#f97316',
-      Nude: '#d4a574',
-      Morado: '#8b5cf6',
-      Turquesa: '#14b8a6',
-      'Verde Militar': '#4d7c0f',
-    }
-    return colorMap[color] || '#9ca3af'
+    return getColorValue(color)
   }
 
   return (
@@ -288,20 +281,16 @@ export default function ProductPage({ params }: PageProps) {
               <AccordionItem value="shipping">
                 <AccordionTrigger>Envio y Entrega</AccordionTrigger>
                 <AccordionContent>
-                  <div className="space-y-2 text-muted-foreground">
-                    <p>Envio gratis en compras sobre $50.000</p>
-                    <p>Despacho a todo Chile</p>
-                    <p>Tiempo de entrega: 3-5 dias habiles (Santiago), 5-10 dias habiles (regiones)</p>
+                  <div className="space-y-2 text-muted-foreground whitespace-pre-line">
+                    {storeConfig?.politica_envio || 'Envío gratis en compras sobre $50.000\nDespacho a todo Chile\nTiempo de entrega: 3-5 días hábiles (Santiago), 5-10 días hábiles (regiones)'}
                   </div>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="returns">
                 <AccordionTrigger>Cambios y Devoluciones</AccordionTrigger>
                 <AccordionContent>
-                  <div className="space-y-2 text-muted-foreground">
-                    <p>30 dias para realizar cambios o devoluciones</p>
-                    <p>Productos deben estar sin uso y con etiquetas originales</p>
-                    <p>Cambios de talla sin costo adicional</p>
+                  <div className="space-y-2 text-muted-foreground whitespace-pre-line">
+                    {storeConfig?.politica_devoluciones || '30 días para realizar cambios o devoluciones\nProductos deben estar sin uso y con etiquetas originales\nCambios de talla sin costo adicional'}
                   </div>
                 </AccordionContent>
               </AccordionItem>

@@ -12,6 +12,10 @@ export async function registerUser(data: {
   telefono: string
   genero: string
   fecha_nacimiento: string
+  calle?: string
+  numero?: string
+  id_comuna?: number
+  detalles?: string
 }) {
   try {
     // Verificar si el correo o RUT ya existen
@@ -33,25 +37,42 @@ export async function registerUser(data: {
     const password_hash = await bcrypt.hash(data.password, 10)
     const nombre_completo = `${data.nombre} ${data.apellido}`
 
-    // Insertar en la base de datos de Supabase
-    const user = await prisma.usuarios.create({
-      data: {
-        nombre_completo,
-        rut: data.rut,
-        email: data.email,
-        password_hash,
-        telefono: data.telefono,
-        genero: data.genero,
-        fecha_nacimiento: new Date(data.fecha_nacimiento),
-        rol: 'Cliente'
+    // Insertar en la base de datos usando una transacción para asegurar integridad
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.usuarios.create({
+        data: {
+          nombre_completo,
+          rut: data.rut,
+          email: data.email,
+          password_hash,
+          telefono: data.telefono,
+          genero: data.genero,
+          fecha_nacimiento: new Date(data.fecha_nacimiento),
+          rol: 'Cliente'
+        }
+      })
+
+      if (data.id_comuna) {
+        await tx.direccion.create({
+          data: {
+            id_usuario: user.id_usuario,
+            id_comuna: data.id_comuna,
+            calle: data.calle || 'Calle pendiente',
+            numero: data.numero || 'S/N',
+            detalles: data.detalles || '',
+            is_active: true
+          }
+        })
       }
+
+      return user
     })
 
     return { 
       success: true, 
       user: { 
-        id: user.id_usuario, 
-        email: user.email, 
+        id: result.id_usuario, 
+        email: result.email, 
         nombre: data.nombre, 
         apellido: data.apellido 
       } 

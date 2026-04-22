@@ -32,10 +32,13 @@ function mapProduct(p: any): Product {
     precioOriginal: p.precio_oferta ? p.precio_normal : undefined,
     categoria: cat,
     tipo: (p.tipo as ProductType) || 'casual',
+    genero: p.genero || (isHombre ? 'hombre' : isNino ? 'nino' : 'mujer'),
+    uso: p.uso || 'walking',
+    estilo: p.estilo || 'casual',
     imagenes: [p.imagen_url || '/placeholder.jpg'],
     tallas: parseTallas(p.talla, p.stock),
     colores: p.color ? p.color.split(',').map((c: string) => c.trim()) : [],
-    caracteristicas: ['Suela Flexible 5mm', 'Zero Drop', 'Puntera ancha (Wide Toe Box)'],
+    caracteristicas: p.caracteristicas && p.caracteristicas.length > 0 ? p.caracteristicas : ['Suela Flexible 5mm', 'Zero Drop', 'Puntera ancha (Wide Toe Box)'],
     destacado: p.is_recomendado || false,
     nuevo: p.is_novedad || false,
     descuento: p.precio_oferta ? Math.round((1 - p.precio_oferta / p.precio_normal) * 100) : undefined,
@@ -87,17 +90,18 @@ export async function getProductsByCategoryStr(categoria: string) {
 
   console.log(`[getProductsByCategoryStr] Input: "${categoria}", Cleaned: "${cleanCat}", Target DB: "${catName}"`)
 
-  if (!catName) {
+  if (!catName && cleanCat !== 'todos') {
     console.log(`[getProductsByCategoryStr] No matching category found for "${categoria}"`)
     return []
   }
 
   try {
+    const where = catName ? { categorias: { nombre: catName } } : {}
     const products = await prisma.productos.findMany({
-      where: { categorias: { nombre: catName } },
+      where,
       include: { categorias: true }
     })
-    console.log(`[getProductsByCategoryStr] Found ${products.length} products for ${catName}`)
+    console.log(`[getProductsByCategoryStr] Found ${products.length} products for ${catName || 'Todos'}`)
     return products.map(mapProduct)
   } catch (error) {
     console.error("[getProductsByCategoryStr] Database error:", error)
@@ -112,4 +116,33 @@ export async function getProductById(id: string) {
   })
   if (!product) return null
   return mapProduct(product)
+}
+
+export async function searchProducts(query: string) {
+  if (!query || query.trim().length === 0) return []
+  const searchTerm = `%${query.trim()}%`
+  
+  // Note: we can't easily ILIKE on String[] arrays directly in Prisma without raw queries 
+  // or using Has/HasSome if it's an array type.
+  // Since caracteristicas is String[], we use array filters.
+  // But searching inside string[] elements partially requires raw query or we just search exact.
+  // Wait, Prisma has `hasSome` but it's for exact matches.
+  // Alternatively, we just use a raw query or we fetch and filter in JS if it's a small store.
+  // For a small store, JS filtering is fine, but let's try a raw query or just filter by nombre/descripcion.
+  // Actually, we can fetch all and filter in JS to make it robust against typo/case in array.
+  
+  const products = await prisma.productos.findMany({
+    include: { categorias: true }
+  })
+  
+  const lowerQuery = query.toLowerCase()
+  const filtered = products.filter(p => {
+    if (p.nombre.toLowerCase().includes(lowerQuery)) return true
+    if (p.descripcion?.toLowerCase().includes(lowerQuery)) return true
+    if (p.caracteristicas && p.caracteristicas.some(c => c.toLowerCase().includes(lowerQuery))) return true
+    if (p.categorias?.nombre.toLowerCase().includes(lowerQuery)) return true
+    return false
+  })
+  
+  return filtered.map(mapProduct)
 }

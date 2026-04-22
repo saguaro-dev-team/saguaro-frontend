@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Product } from '@/lib/store-types'
 import { formatPrice } from '@/lib/store-data'
+import { getColorValue } from '@/lib/color-utils'
 
 interface ProductCardProps {
   product: Product
@@ -85,34 +86,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 key={color}
                 className="h-4 w-4 rounded-full border border-border"
                 style={{
-                  backgroundColor:
-                    color === 'Negro'
-                      ? '#000'
-                      : color === 'Blanco'
-                      ? '#fff'
-                      : color === 'Gris'
-                      ? '#6b7280'
-                      : color === 'Azul'
-                      ? '#3b82f6'
-                      : color === 'Verde'
-                      ? '#22c55e'
-                      : color === 'Rojo'
-                      ? '#ef4444'
-                      : color === 'Rosa'
-                      ? '#ec4899'
-                      : color === 'Marron' || color === 'Cafe'
-                      ? '#78350f'
-                      : color === 'Coral'
-                      ? '#f97316'
-                      : color === 'Nude'
-                      ? '#d4a574'
-                      : color === 'Morado'
-                      ? '#8b5cf6'
-                      : color === 'Turquesa'
-                      ? '#14b8a6'
-                      : color === 'Verde Militar'
-                      ? '#4d7c0f'
-                      : '#9ca3af',
+                  backgroundColor: getColorValue(color)
                 }}
                 title={color}
               />

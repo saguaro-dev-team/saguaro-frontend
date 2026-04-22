@@ -33,72 +33,207 @@ model detalle_pedidos {
   id_producto     Int?
   cantidad        Int
   precio_unitario Int
+  color           String?    @db.VarChar(50)
+  talla           String?    @db.VarChar(20)
   is_active       Boolean?   @default(true)
   pedidos         pedidos?   @relation(fields: [id_pedido], references: [id_pedido], onDelete: NoAction, onUpdate: NoAction)
   productos       productos? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model direcciones {
-  id_direccion Int       @id @default(autoincrement())
-  id_usuario   Int?
-  calle        String    @db.VarChar(100)
-  numero       String    @db.VarChar(10)
-  comuna       String    @db.VarChar(50)
-  region       String    @db.VarChar(50)
-  detalles     String?
-  is_active    Boolean?  @default(true)
-  usuarios     usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+model estados_pedido {
+  id_estado    Int       @id @default(autoincrement()) @db.SmallInt
+  nombre       String    @unique @db.VarChar(50)
+  color_hex    String?   @db.VarChar(10)
+  pedidos      pedidos[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model pedidos {
   id_pedido          Int               @id @default(autoincrement())
   id_usuario         Int?
   fecha_pedido       DateTime?         @default(now()) @db.Timestamp(6)
   total_pagado       Int
-  estado_pedido      String?           @default("Pendiente") @db.VarChar(25)
+  id_estado          Int               @default(1) @db.SmallInt
+  is_active          Boolean?          @default(true)
   token_webpay       String?           @unique @db.VarChar(100)
   authorization_code String?           @db.VarChar(20)
-  is_active          Boolean?          @default(true)
   detalle_pedidos    detalle_pedidos[]
   usuarios           usuarios?         @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+  estado             estados_pedido    @relation(fields: [id_estado], references: [id_estado])
+  pagos              pagos[]
+  seguimiento_envio  seguimiento_envio?
 }
 
 model productos {
-  id_producto     Int               @id @default(autoincrement())
-  id_categoria    Int?
-  nombre          String            @db.VarChar(100)
-  descripcion     String?
-  precio_normal   Int
-  precio_oferta   Int?
-  stock           Int               @default(0)
-  imagen_url      String?           @db.VarChar(255)
-  talla           String?           @db.VarChar(10)
-  color           String?           @db.VarChar(20)
-  tipo            String?           @default("casual") @db.VarChar(50)
-  is_novedad      Boolean?          @default(false)
-  is_recomendado  Boolean?          @default(false)
-  is_oferta       Boolean?          @default(false)
-  is_active       Boolean?          @default(true)
-  fecha_creacion  DateTime?         @default(now()) @db.Timestamp(6)
-  auditoria_stock auditoria_stock[]
-  detalle_pedidos detalle_pedidos[]
-  categorias      categorias?       @relation(fields: [id_categoria], references: [id_categoria], onDelete: NoAction, onUpdate: NoAction)
+  id_producto      Int                @id @default(autoincrement())
+  id_categoria     Int?
+  nombre           String             @db.VarChar(100)
+  descripcion      String?
+  precio_normal    Int
+  precio_oferta    Int?
+  stock            Int                @default(0)
+  imagen_url       String?            @db.VarChar(255)
+  talla            String?            @db.VarChar(255)
+  color            String?            @db.VarChar(255)
+  is_novedad       Boolean?           @default(false)
+  is_recomendado   Boolean?           @default(false)
+  is_oferta        Boolean?           @default(false)
+  is_active        Boolean?           @default(true)
+  fecha_creacion   DateTime?          @default(now()) @db.Timestamp(6)
+  tipo             String?            @default("casual") @db.VarChar(255)
+  genero           String?            @db.VarChar(255)
+  uso              String?            @db.VarChar(255)
+  estilo           String?            @db.VarChar(255)
+  caracteristicas  String[]
+  auditoria_stock  auditoria_stock[]
+  detalle_pedidos  detalle_pedidos[]
+  producto_colores producto_colores[]
+  categorias       categorias?        @relation(fields: [id_categoria], references: [id_categoria], onDelete: NoAction, onUpdate: NoAction)
+  resenas          resenas[]
+  lista_deseos     lista_deseos[]
+}
+
+model colores {
+  id_color         Int                @id @default(autoincrement())
+  nombre           String             @unique @db.VarChar(50)
+  codigo_hex       String?            @db.VarChar(10)
+  is_active        Boolean?           @default(true)
+  producto_colores producto_colores[]
+}
+
+model producto_colores {
+  id_producto Int
+  id_color    Int
+  colores     colores   @relation(fields: [id_color], references: [id_color], onDelete: Cascade)
+  productos   productos @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
+
+  @@id([id_producto, id_color])
+}
+
+model configuracion_tienda {
+  id_config             Int       @id @default(1)
+  politica_envio        String?
+  politica_devoluciones String?
+  updated_at            DateTime? @default(now()) @db.Timestamp(6)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model usuarios {
-  id_usuario      Int           @id @default(autoincrement())
-  nombre_completo String        @db.VarChar(100)
-  rut             String        @unique @db.VarChar(12)
-  email           String        @unique @db.VarChar(100)
-  password_hash   String
-  telefono        String?       @db.VarChar(20)
-  genero          String?       @db.VarChar(20)
-  fecha_nacimiento DateTime?    @db.Date
-  rol             String?       @db.VarChar(20)
-  is_active       Boolean?      @default(true)
-  fecha_registro  DateTime?     @default(now()) @db.Timestamp(6)
-  direcciones     direcciones[]
-  pedidos         pedidos[]
+  id_usuario       Int         @id @default(autoincrement())
+  nombre_completo  String      @db.VarChar(100)
+  rut              String      @unique @db.VarChar(12)
+  email            String      @unique @db.VarChar(100)
+  password_hash    String
+  rol              String?     @db.VarChar(20)
+  is_active        Boolean?    @default(true)
+  fecha_registro   DateTime?   @default(now()) @db.Timestamp(6)
+  fecha_nacimiento DateTime?   @db.Date
+  genero           String?     @db.VarChar(20)
+  telefono         String?     @db.VarChar(20)
+  direccion        direccion[]
+  pedidos          pedidos[]
+  resenas          resenas[]
+  lista_deseos     lista_deseos[]
+}
+
+model comuna {
+  id_comuna     Int         @id @default(autoincrement()) @db.SmallInt
+  nombre_comuna String      @db.VarChar(100)
+  id_region     Int         @db.SmallInt
+  region        region      @relation(fields: [id_region], references: [id_region], onDelete: Cascade)
+  direcciones   direccion[]
+}
+
+model direccion {
+  id_direccion Int       @id(map: "direcciones_pkey") @default(autoincrement())
+  id_usuario   Int?
+  id_comuna    Int?      @db.SmallInt
+  calle        String    @db.VarChar(100)
+  numero       String    @db.VarChar(10)
+  detalles     String?
+  is_active    Boolean?  @default(true)
+  referencia   String?   @db.VarChar(255)
+  usuarios     usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction, map: "direcciones_id_usuario_fkey")
+  comuna       comuna?   @relation(fields: [id_comuna], references: [id_comuna], onDelete: SetNull)
+}
+
+model region {
+  id_region     Int      @id @default(autoincrement()) @db.SmallInt
+  nombre_region String   @db.VarChar(100)
+  comunas       comuna[]
+}
+model blog_posts {
+  id_post           Int       @id @default(autoincrement())
+  titulo            String    @db.VarChar(255)
+  slug              String    @unique @db.VarChar(255)
+  contenido         String    @db.Text
+  resumen           String?   @db.VarChar(500)
+  imagen_url        String?   @db.VarChar(255)
+  fecha_publicacion DateTime? @default(now()) @db.Timestamp(6)
+  autor             String?   @db.VarChar(100)
+  is_active         Boolean?  @default(true)
+}
+
+model resenas {
+  id_resena      Int       @id @default(autoincrement())
+  id_producto    Int
+  id_usuario     Int
+  calificacion   Int       @db.SmallInt
+  comentario     String?   @db.Text
+  fecha          DateTime? @default(now()) @db.Timestamp(6)
+  is_active      Boolean?  @default(true)
+  productos      productos @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
+  usuarios       usuarios  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+}
+
+model lista_deseos {
+  id_wishlist    Int       @id @default(autoincrement())
+  id_usuario     Int
+  id_producto    Int
+  fecha_agregado DateTime? @default(now()) @db.Timestamp(6)
+  productos      productos @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)
+  usuarios       usuarios  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@unique([id_usuario, id_producto])
+}
+
+model cupones_descuento {
+  id_cupon         Int       @id @default(autoincrement())
+  codigo           String    @unique @db.VarChar(50)
+  porcentaje       Int       @db.SmallInt
+  fecha_expiracion DateTime? @db.Timestamp(6)
+  uso_maximo       Int?      @default(100)
+  usos_actuales    Int?      @default(0)
+  is_active        Boolean?  @default(true)
+}
+
+model metodos_pago {
+  id_metodo Int       @id @default(autoincrement()) @db.SmallInt
+  nombre    String    @unique @db.VarChar(50)
+  is_active Boolean?  @default(true)
+  pagos     pagos[]
+}
+
+model pagos {
+  id_pago            Int          @id @default(autoincrement())
+  id_pedido          Int
+  id_metodo          Int          @db.SmallInt
+  monto              Int
+  fecha_pago         DateTime?    @default(now()) @db.Timestamp(6)
+  estado_pago        String?      @default("Pendiente") @db.VarChar(25)
+  token_transaccion  String?      @unique @db.VarChar(100)
+  codigo_autorizacion String?     @db.VarChar(20)
+  respuesta_raw      Json?
+  pedidos            pedidos      @relation(fields: [id_pedido], references: [id_pedido], onDelete: Cascade)
+  metodos_pago       metodos_pago @relation(fields: [id_metodo], references: [id_metodo])
+}
+
+model seguimiento_envio {
+  id_seguimiento     Int       @id @default(autoincrement())
+  id_pedido          Int       @unique
+  empresa_transporte String?   @db.VarChar(50)
+  numero_guia        String?   @db.VarChar(100)
+  url_seguimiento    String?   @db.VarChar(255)
+  estado_logistico   String?   @default("En Bodega") @db.VarChar(50)
+  fecha_actualizacion DateTime? @default(now()) @db.Timestamp(6)
+  pedidos            pedidos   @relation(fields: [id_pedido], references: [id_pedido], onDelete: Cascade)
 }

@@ -13,6 +13,7 @@ export function HeroSection() {
             alt="Background"
             fill
             className="object-cover opacity-10 scale-105 transition-transform duration-1000"
+            priority
          />
          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/40" />
          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />

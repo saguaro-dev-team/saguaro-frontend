@@ -1,0 +1,12 @@
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "postgres", schema "public" at "aws-1-sa-east-1.pooler.supabase.com:5432"
+Error: ERROR: type "serial" does not exist
+   0: sql_schema_connector::apply_migration::migration_step
+           with step=AlterTable(AlterTable { table_ids: MigrationPair { previous: TableId(3), next: TableId(9) }, changes: [DropPrimaryKey, AddColumn { column_id: TableColumnId(64), has_virtual_default: false }, AlterColumn(AlterColumn { column_id: MigrationPair { previous: TableColumnId(14), next: TableColumnId(62) }, changes: ColumnChanges { type_change: Some(SafeCast), changes: BitFlags<ColumnChange>(0b100, TypeChanged) }, type_change: Some(SafeCast) }), AlterColumn(AlterColumn { column_id: MigrationPair { previous: TableColumnId(15), next: TableColumnId(63) }, changes: ColumnChanges { type_change: Some(RiskyCast), changes: BitFlags<ColumnChange>(0b100, TypeChanged) }, type_change: Some(RiskyCast) }), AddPrimaryKey] })
+             at schema-engine\connectors\sql-schema-connector\src\apply_migration.rs:21
+   1: sql_schema_connector::apply_migration::apply_migration
+             at schema-engine\connectors\sql-schema-connector\src\apply_migration.rs:10
+   2: schema_core::state::SchemaPush
+             at schema-engine\core\src\state.rs:504
+

@@ -26,6 +26,9 @@ export interface Product {
   precioOriginal?: number
   categoria: ProductCategory
   tipo: ProductType
+  genero?: string
+  uso?: string
+  estilo?: string
   imagenes: string[]
   tallas: ProductSize[]
   colores: string[]
@@ -49,16 +52,22 @@ export interface Cart {
 }
 
 export interface Address {
-  id: string
-  userId: string
+  id_direccion: number
+  id_usuario: number
   calle: string
   numero: string
-  departamento?: string
-  comuna: string
-  ciudad: string
-  region: string
-  codigoPostal: string
-  principal: boolean
+  detalles?: string
+  id_comuna: number
+  comuna?: {
+    id_comuna: number
+    nombre_comuna: string
+    region: {
+      id_region: number
+      nombre_region: string
+    }
+  }
+  is_active: boolean
+  principal?: boolean
 }
 
 export interface OrderStatus {

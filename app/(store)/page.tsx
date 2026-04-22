@@ -25,10 +25,10 @@ export default async function HomePage() {
           <div className="flex items-end justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
-                Recien Llegados
+                Recién Llegados
               </h2>
               <p className="mt-2 text-lg text-muted-foreground">
-                Los ultimos modelos de la temporada
+                Los últimos modelos de la temporada
               </p>
             </div>
             <Button variant="ghost" asChild className="hidden sm:flex">
@@ -86,14 +86,14 @@ export default async function HomePage() {
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
               <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
-                Por que Barefoot?
+                ¿Por qué Barefoot?
               </span>
               <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
                 Beneficios del Calzado Barefoot
               </h2>
               <p className="mt-4 text-muted-foreground text-pretty">
-                El calzado barefoot esta disenado para permitir que tus pies se muevan
-                de forma natural, como si estuvieras descalzo pero con la proteccion
+                El calzado barefoot está diseñado para permitir que tus pies se muevan
+                de forma natural, como si estuvieras descalzo pero con la protección
                 necesaria.
               </p>
 

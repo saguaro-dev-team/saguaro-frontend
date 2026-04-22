@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/lib/auth-context'
+import { getRegiones } from '@/app/actions/location'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -18,9 +20,15 @@ export default function RegisterPage() {
   
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/perfil')
+      window.location.href = '/'
     }
-  }, [isAuthenticated, router])
+    // Cargar regiones
+    getRegiones().then(res => {
+      if (res.success && res.regiones) {
+        setRegionesData(res.regiones)
+      }
+    })
+  }, [isAuthenticated])
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -32,7 +40,13 @@ export default function RegisterPage() {
     fecha_nacimiento: '',
     password: '',
     confirmPassword: '',
+    calle: '',
+    numero: '',
+    id_comuna: 0,
+    detalles: '',
   })
+  const [regionesData, setRegionesData] = useState<any[]>([])
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState('')
@@ -72,10 +86,13 @@ export default function RegisterPage() {
       telefono: formData.telefono,
       genero: formData.genero,
       fecha_nacimiento: formData.fecha_nacimiento,
+      calle: formData.calle,
+      numero: formData.numero,
+      id_comuna: formData.id_comuna,
+      detalles: formData.detalles
     })
-    
     if (result.success) {
-      router.push('/')
+      window.location.href = '/'
     } else {
       setError(result.error || 'Ocurrió un error en el registro')
     }
@@ -248,6 +265,61 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                 />
+              </div>
+
+              <Separator className="my-4" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Dirección de Despacho</h3>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="region">Región</Label>
+                  <Select required onValueChange={(val) => {
+                    setSelectedRegionId(parseInt(val))
+                    setFormData({...formData, id_comuna: 0})
+                  }}>
+                    <SelectTrigger id="region">
+                      <SelectValue placeholder="Selecciona..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regionesData.map((reg) => (
+                        <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
+                          {reg.nombre_region}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comuna">Comuna</Label>
+                  <Select required disabled={!selectedRegionId} value={formData.id_comuna ? formData.id_comuna.toString() : ''} onValueChange={(val) => setFormData({...formData, id_comuna: parseInt(val)})}>
+                    <SelectTrigger id="comuna">
+                      <SelectValue placeholder="Selecciona..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
+                        <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
+                          {com.nombre_comuna}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="calle">Calle</Label>
+                  <Input id="calle" name="calle" placeholder="Ej: Av. Providencia" value={formData.calle} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numero">Número</Label>
+                  <Input id="numero" name="numero" placeholder="1234" value={formData.numero} onChange={handleChange} required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="detalles">Depto / Casa / Referencia (Opcional)</Label>
+                <Input id="detalles" name="detalles" placeholder="Depto 402, Block B..." value={formData.detalles} onChange={handleChange} />
               </div>
 
               <label className="flex items-start gap-2 cursor-pointer">

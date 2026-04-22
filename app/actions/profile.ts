@@ -30,8 +30,15 @@ export async function getUserAddresses(userId: string) {
     const id = parseInt(userId)
     if (isNaN(id)) return { success: false, error: 'ID de usuario inválido' }
 
-    const direcciones = await prisma.direcciones.findMany({
+    const direcciones = await prisma.direccion.findMany({
       where: { id_usuario: id, is_active: true },
+      include: {
+        comuna: {
+          include: {
+            region: true
+          }
+        }
+      },
       orderBy: { id_direccion: 'desc' }
     })
     
@@ -46,21 +53,19 @@ export async function addAddress(data: {
   userId: string
   calle: string
   numero: string
-  comuna: string
-  region: string
+  id_comuna: number
   detalles?: string
 }) {
   try {
     const id = parseInt(data.userId)
     if (isNaN(id)) return { success: false, error: 'ID de usuario inválido' }
 
-    const direccion = await prisma.direcciones.create({
+    const direccion = await prisma.direccion.create({
       data: {
         id_usuario: id,
         calle: data.calle,
         numero: data.numero,
-        comuna: data.comuna,
-        region: data.region,
+        id_comuna: data.id_comuna,
         detalles: data.detalles || null
       }
     })

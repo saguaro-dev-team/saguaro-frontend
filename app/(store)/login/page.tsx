@@ -17,9 +17,9 @@ export default function LoginPage() {
   
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/perfil')
+      window.location.href = '/'
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated])
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +35,7 @@ export default function LoginPage() {
     const result = await login(email, password)
     
     if (result.success) {
-      router.push('/')
+      window.location.href = '/'
     } else {
       setError(result.error || 'Ocurrió un error al iniciar sesión')
     }

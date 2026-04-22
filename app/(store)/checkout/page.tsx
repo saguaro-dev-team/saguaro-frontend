@@ -20,25 +20,8 @@ import {
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/store-data'
-
-const regiones = [
-  'Region Metropolitana',
-  'Valparaiso',
-  'Biobio',
-  'Maule',
-  'Araucania',
-  'OHiggins',
-  'Los Lagos',
-  'Coquimbo',
-  'Antofagasta',
-  'Los Rios',
-  'Tarapaca',
-  'Atacama',
-  'Nuble',
-  'Magallanes',
-  'Arica y Parinacota',
-  'Aysen',
-]
+import { getRegiones } from '@/app/actions/location'
+import { useEffect } from 'react'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -59,10 +42,20 @@ export default function CheckoutPage() {
     calle: '',
     numero: '',
     departamento: '',
-    comuna: '',
-    region: '',
+    id_comuna: 0,
     codigoPostal: '',
   })
+  
+  const [regionesData, setRegionesData] = useState<any[]>([])
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
+
+  useEffect(() => {
+    getRegiones().then(res => {
+      if (res.success && res.regiones) {
+        setRegionesData(res.regiones)
+      }
+    })
+  }, [])
 
   const shippingCost = total >= 50000 ? 0 : shippingMethod === 'express' ? 7990 : 4990
   const finalTotal = total + shippingCost
@@ -265,37 +258,6 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="comuna">Comuna</Label>
-                      <Input
-                        id="comuna"
-                        name="comuna"
-                        value={formData.comuna}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="region">Region</Label>
-                      <Select
-                        value={formData.region}
-                        onValueChange={(value) => setFormData({ ...formData, region: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona una region" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {regiones.map((region) => (
-                            <SelectItem key={region} value={region}>
-                              {region}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="codigoPostal">Codigo Postal</Label>
                       <Input
                         id="codigoPostal"
@@ -303,6 +265,49 @@ export default function CheckoutPage() {
                         value={formData.codigoPostal}
                         onChange={handleInputChange}
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="region">Región</Label>
+                      <Select
+                        value={selectedRegionId ? selectedRegionId.toString() : ''}
+                        onValueChange={(value) => {
+                          setSelectedRegionId(parseInt(value))
+                          setFormData({ ...formData, id_comuna: 0 })
+                        }}
+                      >
+                        <SelectTrigger id="region">
+                          <SelectValue placeholder="Selecciona una región" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regionesData.map((reg) => (
+                            <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
+                              {reg.nombre_region}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comuna">Comuna</Label>
+                      <Select
+                        disabled={!selectedRegionId}
+                        value={formData.id_comuna ? formData.id_comuna.toString() : ''}
+                        onValueChange={(value) => setFormData({ ...formData, id_comuna: parseInt(value) })}
+                      >
+                        <SelectTrigger id="comuna">
+                          <SelectValue placeholder="Selecciona una comuna" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
+                            <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
+                              {com.nombre_comuna}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

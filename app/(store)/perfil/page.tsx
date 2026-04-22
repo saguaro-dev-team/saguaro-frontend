@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight } from 'lucide-react'
+import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,24 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth-context'
 import { getUserAddresses, addAddress, updateUserProfile, getUserProfile } from '@/app/actions/profile'
+import { getRegiones } from '@/app/actions/location'
+import { getUserOrders } from '@/app/actions/orders'
 
-// Mock orders data
-const mockOrders = [
-  {
-    id: 'SAG-12345678',
-    fecha: '2024-03-15',
-    total: 109980,
-    estado: 'Entregado',
-    items: 2,
-  },
-  {
-    id: 'SAG-12345679',
-    fecha: '2024-03-01',
-    total: 54990,
-    estado: 'Enviado',
-    items: 1,
-  },
-]
+// We will use real orders now
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -55,12 +41,15 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [realOrders, setRealOrders] = useState<any[]>([])
 
   // Direcciones State
   const [direcciones, setDirecciones] = useState<any[]>([])
   const [isAddingAddress, setIsAddingAddress] = useState(false)
-  const [newAddress, setNewAddress] = useState({ calle: '', numero: '', comuna: '', region: '', detalles: '' })
+  const [newAddress, setNewAddress] = useState({ calle: '', numero: '', id_comuna: 0, detalles: '' })
   const [addressLoading, setAddressLoading] = useState(false)
+  const [regionesData, setRegionesData] = useState<any[]>([])
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -83,26 +72,46 @@ export default function ProfilePage() {
           }))
         }
       })
+      getRegiones().then(res => {
+        if (res.success && res.regiones) {
+          setRegionesData(res.regiones)
+        }
+      })
+      getUserOrders(user.id).then(res => {
+        if (res.success && res.orders) {
+          setRealOrders(res.orders)
+        }
+      })
     }
   }, [isAuthenticated, user, router])
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || newAddress.id_comuna === 0) return
     setAddressLoading(true)
     const res = await addAddress({
       userId: user.id,
       calle: newAddress.calle,
       numero: newAddress.numero,
-      comuna: newAddress.comuna,
-      region: newAddress.region,
+      id_comuna: newAddress.id_comuna,
       detalles: newAddress.detalles
     })
     
     if (res.success && res.direccion) {
-      setDirecciones([res.direccion, ...direcciones])
+      const comunaData = regionesData.find(r => r.id_region === selectedRegionId)?.comunas.find((c: any) => c.id_comuna === newAddress.id_comuna)
+      const regionData = regionesData.find(r => r.id_region === selectedRegionId)
+      
+      const newDirWithRelations = {
+        ...res.direccion,
+        comuna: {
+          ...comunaData,
+          region: regionData
+        }
+      }
+      setDirecciones([newDirWithRelations, ...direcciones])
       setIsAddingAddress(false)
-      setNewAddress({ calle: '', numero: '', comuna: '', region: '', detalles: '' })
+      setNewAddress({ calle: '', numero: '', id_comuna: 0, detalles: '' })
+      setSelectedRegionId(null)
     }
     setAddressLoading(false)
   }
@@ -165,13 +174,17 @@ export default function ProfilePage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Entregado':
+    switch (status.toLowerCase()) {
+      case 'entregado':
         return 'bg-green-100 text-green-800'
-      case 'Enviado':
+      case 'enviado':
         return 'bg-blue-100 text-blue-800'
-      case 'Preparando':
+      case 'preparando':
         return 'bg-yellow-100 text-yellow-800'
+      case 'pagado':
+        return 'bg-emerald-100 text-emerald-800'
+      case 'cancelado':
+        return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -278,6 +291,20 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                {direcciones.length > 0 && (
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" /> Dirección Principal
+                    </h4>
+                    <p className="text-sm font-medium">
+                      {direcciones[0].calle} {direcciones[0].numero}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {direcciones[0].comuna?.nombre_comuna}, {direcciones[0].comuna?.region?.nombre_region}
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="telefono">Teléfono</Label>
@@ -353,25 +380,51 @@ export default function ProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {mockOrders.length > 0 ? (
+                {realOrders.length > 0 ? (
                   <div className="space-y-4">
-                    {mockOrders.map((order) => (
+                    {realOrders.map((order) => (
                       <div
-                        key={order.id}
-                        className="flex items-center justify-between rounded-lg border p-4"
+                        key={order.id_pedido}
+                        className="flex flex-col gap-4 rounded-lg border p-4 hover:shadow-md transition-shadow"
                       >
-                        <div className="space-y-1">
-                          <p className="font-medium font-mono">{order.id}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(order.fecha).toLocaleDateString('es-CL')} | {order.items}{' '}
-                            {order.items === 1 ? 'producto' : 'productos'}
-                          </p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="font-medium">{formatPrice(order.total)}</p>
-                          <Badge className={getStatusColor(order.estado)}>
-                            {order.estado}
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="font-bold text-lg font-mono">SAG-{String(order.id_pedido).padStart(8, '0')}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(order.fecha_pedido).toLocaleDateString('es-CL')}
+                            </p>
+                          </div>
+                          <Badge className={getStatusColor(order.estado?.nombre || 'Pendiente')}>
+                            {order.estado?.nombre || 'Pendiente'}
                           </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {order.detalle_pedidos.map((det: any) => (
+                            <div key={det.id_detalle} className="flex justify-between text-sm">
+                              <span>{det.cantidad}x {det.productos?.nombre} ({det.color}, {det.talla})</span>
+                              <span className="text-muted-foreground">{formatPrice(det.precio_unitario * det.cantidad)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground mt-2">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-3 w-3" />
+                            <span>Pago: {order.pagos?.[0]?.metodos_pago?.nombre || 'Pendiente'}</span>
+                          </div>
+                          {order.seguimiento_envio && (
+                            <div className="flex items-center gap-2 text-primary font-medium">
+                              <Truck className="h-3 w-3" />
+                              <span>{order.seguimiento_envio.empresa_transporte}: {order.seguimiento_envio.numero_guia} ({order.seguimiento_envio.estado_logistico})</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <Separator />
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold">Total</span>
+                          <span className="font-bold text-xl">{formatPrice(order.total_pagado)}</span>
                         </div>
                       </div>
                     ))}
@@ -421,7 +474,7 @@ export default function ProfilePage() {
                             </p>
                           )}
                           <p className="text-sm text-muted-foreground">
-                            {dir.comuna}, {dir.region}
+                            {dir.comuna?.nombre_comuna || 'Sin comuna'}, {dir.comuna?.region?.nombre_region || 'Sin región'}
                           </p>
                         </div>
                       </div>
@@ -447,12 +500,37 @@ export default function ProfilePage() {
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="comuna">Comuna</Label>
-                          <Input required id="comuna" value={newAddress.comuna} onChange={(e) => setNewAddress({...newAddress, comuna: e.target.value})} />
+                          <Label htmlFor="region">Región</Label>
+                          <Select required value={selectedRegionId ? selectedRegionId.toString() : ''} onValueChange={(val) => {
+                            setSelectedRegionId(parseInt(val))
+                            setNewAddress({...newAddress, id_comuna: 0})
+                          }}>
+                            <SelectTrigger id="region">
+                              <SelectValue placeholder="Selecciona una región" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {regionesData.map((reg) => (
+                                <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
+                                  {reg.nombre_region}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="region">Región</Label>
-                          <Input required id="region" value={newAddress.region} onChange={(e) => setNewAddress({...newAddress, region: e.target.value})} />
+                          <Label htmlFor="comuna">Comuna</Label>
+                          <Select required disabled={!selectedRegionId} value={newAddress.id_comuna ? newAddress.id_comuna.toString() : ''} onValueChange={(val) => setNewAddress({...newAddress, id_comuna: parseInt(val)})}>
+                            <SelectTrigger id="comuna">
+                              <SelectValue placeholder="Selecciona una comuna" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
+                                <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
+                                  {com.nombre_comuna}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
