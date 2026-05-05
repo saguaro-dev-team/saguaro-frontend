@@ -37,6 +37,7 @@ export interface Product {
   destacado: boolean
   nuevo: boolean
   descuento?: number
+  activo: boolean
 }
 
 export interface CartItem {

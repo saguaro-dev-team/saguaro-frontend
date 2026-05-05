@@ -3,82 +3,112 @@
 import { prisma } from '@/lib/prisma'
 import type { Product, ProductCategory, ProductType, ProductSize } from '@/lib/store-types'
 
-function parseTallas(tallaStr: string | null, stock: number): ProductSize[] {
-  if (!tallaStr) return []
-  if (tallaStr.includes('-')) {
-    const [min, max] = tallaStr.split('-').map(Number)
-    const tallas = []
-    for(let i = min; i <= max; i++) {
-      tallas.push({ talla: i, stock })
-    }
-    return tallas
-  }
-  return tallaStr.split(',').map(t => ({ talla: parseInt(t.trim()) || 0, stock }))
-}
-
-function mapProduct(p: any): Product {
-  const isNino = p.categorias?.nombre === 'Niño'
-  const isHombre = p.categorias?.nombre === 'Hombre'
+function mapProduct(m: any): Product {
+  const isNino = m.categoria?.nombre_categoria === 'Niño'
+  const isHombre = m.categoria?.nombre_categoria === 'Hombre'
   
   let cat: ProductCategory = 'mujer'
   if (isNino) cat = 'nino'
   if (isHombre) cat = 'hombre'
 
+  // El modelo tiene productos (variantes). Sacaremos la información de ahí.
+  const variantes = m.productos || []
+  
+  // Extraer tallas únicas con stock sumado
+  const tallasMap = new Map<number, number>()
+  const coloresSet = new Set<string>()
+  let precioOriginal = 0;
+  let precioOferta: number | undefined = undefined;
+  
+  variantes.forEach((v: any) => {
+     const tName = parseInt(v.talla?.nombre_talla) || 0
+     tallasMap.set(tName, (tallasMap.get(tName) || 0) + v.stock)
+     if (v.color?.nombre_color) coloresSet.add(v.color.nombre_color)
+     if (precioOriginal === 0) precioOriginal = v.precio
+     
+     // Si tiene promoción activa
+     if (v.promociones && v.promociones.length > 0) {
+        const promo = v.promociones[0]
+        if (promo.activo) {
+           const pDescuento = promo.descuento_especifico || promo.promocion?.porcentaje_descuento || 0
+           const calculado = Math.round(v.precio * (1 - pDescuento/100))
+           if (!precioOferta || calculado < precioOferta) precioOferta = calculado
+        }
+     }
+  })
+
+  const tallasArray = Array.from(tallasMap.entries()).map(([talla, stock]) => ({ talla, stock }))
+
+  const isNuevo = variantes.some((v:any) => v.novedades && v.novedades.length > 0)
+
   return {
-    id: String(p.id_producto),
-    nombre: p.nombre,
-    descripcion: p.descripcion || '',
-    precio: p.precio_oferta || p.precio_normal,
-    precioOriginal: p.precio_oferta ? p.precio_normal : undefined,
+    id: String(m.id_modelo),
+    nombre: m.nombre_modelo,
+    descripcion: m.descripcion || '',
+    precio: precioOferta || precioOriginal || 0,
+    precioOriginal: precioOferta ? precioOriginal : undefined,
     categoria: cat,
-    tipo: (p.tipo as ProductType) || 'casual',
-    genero: p.genero || (isHombre ? 'hombre' : isNino ? 'nino' : 'mujer'),
-    uso: p.uso || 'walking',
-    estilo: p.estilo || 'casual',
-    imagenes: [p.imagen_url || '/placeholder.jpg'],
-    tallas: parseTallas(p.talla, p.stock),
-    colores: p.color ? p.color.split(',').map((c: string) => c.trim()) : [],
-    caracteristicas: p.caracteristicas && p.caracteristicas.length > 0 ? p.caracteristicas : ['Suela Flexible 5mm', 'Zero Drop', 'Puntera ancha (Wide Toe Box)'],
-    destacado: p.is_recomendado || false,
-    nuevo: p.is_novedad || false,
-    descuento: p.precio_oferta ? Math.round((1 - p.precio_oferta / p.precio_normal) * 100) : undefined,
+    tipo: 'casual',
+    genero: isHombre ? 'hombre' : isNino ? 'nino' : 'mujer',
+    uso: 'walking',
+    estilo: 'casual',
+    imagenes: m.imagen_url ? [m.imagen_url] : ['/placeholder.jpg'],
+    tallas: tallasArray,
+    colores: Array.from(coloresSet),
+    caracteristicas: ['Suela Flexible 5mm', 'Zero Drop', 'Puntera ancha'],
+    destacado: isNuevo,
+    nuevo: isNuevo,
+    descuento: precioOferta && precioOriginal ? Math.round((1 - precioOferta / precioOriginal) * 100) : undefined,
+    activo: m.activo ?? true,
   }
 }
 
-export async function getAllProducts() {
-  const products = await prisma.productos.findMany({ include: { categorias: true } })
-  return products.map(mapProduct)
+const includeVariantes = {
+  categoria: true,
+  productos: {
+    include: {
+      color: true,
+      talla: true,
+      promociones: { include: { promocion: true } },
+      novedades: true
+    }
+  }
+}
+
+export async function getAllProducts(showInactive = false) {
+  const where = showInactive ? {} : { activo: true }
+  const modelos = await prisma.modelo.findMany({ 
+    where,
+    include: includeVariantes 
+  })
+  return modelos.map(mapProduct)
 }
 
 export async function getFeaturedProducts() {
-  const products = await prisma.productos.findMany({
-    where: { is_recomendado: true },
-    include: { categorias: true },
+  const modelos = await prisma.modelo.findMany({
+    where: { activo: true },
+    include: includeVariantes,
     take: 8
   })
-  if (products.length === 0) {
-    const all = await prisma.productos.findMany({ take: 8, include: { categorias: true } })
-    return all.map(mapProduct)
-  }
-  return products.map(mapProduct)
+  return modelos.map(mapProduct)
 }
 
 export async function getNewProducts() {
-  const products = await prisma.productos.findMany({
-    where: { is_novedad: true },
-    include: { categorias: true },
+  const modelos = await prisma.modelo.findMany({
+    where: { activo: true },
+    include: includeVariantes,
     take: 4
   })
-  return products.map(mapProduct)
+  return modelos.map(mapProduct)
 }
 
 export async function getDiscountedProducts() {
-  const products = await prisma.productos.findMany({
-    where: { precio_oferta: { not: null } },
-    include: { categorias: true },
+  const modelos = await prisma.modelo.findMany({
+    where: { activo: true },
+    include: includeVariantes,
     take: 4
   })
-  return products.map(mapProduct)
+  return modelos.map(mapProduct)
 }
 
 export async function getProductsByCategoryStr(categoria: string) {
@@ -88,59 +118,42 @@ export async function getProductsByCategoryStr(categoria: string) {
   if (cleanCat === 'mujer') catName = 'Mujer'
   if (cleanCat === 'nino' || cleanCat === 'niño' || cleanCat === 'ninos') catName = 'Niño'
 
-  console.log(`[getProductsByCategoryStr] Input: "${categoria}", Cleaned: "${cleanCat}", Target DB: "${catName}"`)
-
-  if (!catName && cleanCat !== 'todos') {
-    console.log(`[getProductsByCategoryStr] No matching category found for "${categoria}"`)
-    return []
-  }
+  if (!catName && cleanCat !== 'todos') return []
 
   try {
-    const where = catName ? { categorias: { nombre: catName } } : {}
-    const products = await prisma.productos.findMany({
+    const where: any = { activo: true }
+    if (catName) where.categoria = { nombre_categoria: catName }
+    
+    const modelos = await prisma.modelo.findMany({
       where,
-      include: { categorias: true }
+      include: includeVariantes
     })
-    console.log(`[getProductsByCategoryStr] Found ${products.length} products for ${catName || 'Todos'}`)
-    return products.map(mapProduct)
+    return modelos.map(mapProduct)
   } catch (error) {
-    console.error("[getProductsByCategoryStr] Database error:", error)
-    throw error
+    console.error("[getProductsByCategoryStr] Error:", error)
+    return []
   }
 }
 
 export async function getProductById(id: string) {
-  const product = await prisma.productos.findUnique({
-    where: { id_producto: parseInt(id) },
-    include: { categorias: true }
+  const modelo = await prisma.modelo.findUnique({
+    where: { id_modelo: parseInt(id) },
+    include: includeVariantes
   })
-  if (!product) return null
-  return mapProduct(product)
+  if (!modelo) return null
+  return mapProduct(modelo)
 }
 
 export async function searchProducts(query: string) {
   if (!query || query.trim().length === 0) return []
-  const searchTerm = `%${query.trim()}%`
-  
-  // Note: we can't easily ILIKE on String[] arrays directly in Prisma without raw queries 
-  // or using Has/HasSome if it's an array type.
-  // Since caracteristicas is String[], we use array filters.
-  // But searching inside string[] elements partially requires raw query or we just search exact.
-  // Wait, Prisma has `hasSome` but it's for exact matches.
-  // Alternatively, we just use a raw query or we fetch and filter in JS if it's a small store.
-  // For a small store, JS filtering is fine, but let's try a raw query or just filter by nombre/descripcion.
-  // Actually, we can fetch all and filter in JS to make it robust against typo/case in array.
-  
-  const products = await prisma.productos.findMany({
-    include: { categorias: true }
-  })
-  
   const lowerQuery = query.toLowerCase()
-  const filtered = products.filter(p => {
-    if (p.nombre.toLowerCase().includes(lowerQuery)) return true
-    if (p.descripcion?.toLowerCase().includes(lowerQuery)) return true
-    if (p.caracteristicas && p.caracteristicas.some(c => c.toLowerCase().includes(lowerQuery))) return true
-    if (p.categorias?.nombre.toLowerCase().includes(lowerQuery)) return true
+  
+  const modelos = await prisma.modelo.findMany({ include: includeVariantes })
+  
+  const filtered = modelos.filter(m => {
+    if (m.nombre_modelo.toLowerCase().includes(lowerQuery)) return true
+    if (m.descripcion?.toLowerCase().includes(lowerQuery)) return true
+    if (m.categoria?.nombre_categoria.toLowerCase().includes(lowerQuery)) return true
     return false
   })
   

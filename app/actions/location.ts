@@ -16,10 +16,11 @@ export async function getRegiones() {
     return { success: false, error: 'No se pudieron cargar las regiones' }
   }
 }
+
 export async function getColores() {
   try {
-    const colores = await prisma.colores.findMany({
-      orderBy: { nombre: 'asc' }
+    const colores = await prisma.color.findMany({
+      orderBy: { nombre_color: 'asc' }
     })
     return { success: true, colores }
   } catch (error) {

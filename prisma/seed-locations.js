@@ -31,11 +31,17 @@ async function main() {
     { nombre: 'Oliva', codigo_hex: '#808000' }
   ];
 
+  // Borrar datos anteriores para evitar duplicados en el nuevo esquema
+  await prisma.comuna.deleteMany({});
+  await prisma.region.deleteMany({});
+  await prisma.color.deleteMany({});
+
   for (const c of colores) {
-    await prisma.colores.upsert({
-      where: { nombre: c.nombre },
-      update: { codigo_hex: c.codigo_hex },
-      create: c
+    await prisma.color.create({
+      data: {
+        nombre_color: c.nombre,
+        codigo_hex: c.codigo_hex
+      }
     });
   }
 
@@ -110,14 +116,15 @@ async function main() {
   for (const r of data) {
     const region = await prisma.region.create({
       data: {
-        nombre_region: r.region
+        nombre: r.region,
+        codigo: r.region.substring(0, 3).toUpperCase()
       }
     });
 
     for (const c of r.comunas) {
       await prisma.comuna.create({
         data: {
-          nombre_comuna: c,
+          nombre: c,
           id_region: region.id_region
         }
       });

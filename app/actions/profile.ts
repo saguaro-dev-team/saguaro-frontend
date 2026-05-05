@@ -1,19 +1,22 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function getUserProfile(userId: string) {
   try {
     const id = parseInt(userId)
     if (isNaN(id)) return { success: false, error: 'ID inválido' }
 
-    const user = await prisma.usuarios.findUnique({
+    const user = await prisma.usuario.findUnique({
       where: { id_usuario: id },
       select: {
         rut: true,
         telefono: true,
         genero: true,
-        fecha_nacimiento: true
+        fecha_nacimiento: true,
+        nombres: true,
+        primer_apellido: true
       }
     })
     
@@ -31,7 +34,7 @@ export async function getUserAddresses(userId: string) {
     if (isNaN(id)) return { success: false, error: 'ID de usuario inválido' }
 
     const direcciones = await prisma.direccion.findMany({
-      where: { id_usuario: id, is_active: true },
+      where: { id_usuario: id, activa: true },
       include: {
         comuna: {
           include: {
@@ -66,7 +69,9 @@ export async function addAddress(data: {
         calle: data.calle,
         numero: data.numero,
         id_comuna: data.id_comuna,
-        detalles: data.detalles || null
+        detalles: data.detalles || null,
+        activa: true,
+        es_principal: false
       }
     })
     
@@ -76,8 +81,6 @@ export async function addAddress(data: {
     return { success: false, error: 'No se pudo guardar la dirección' }
   }
 }
-
-import bcrypt from 'bcryptjs'
 
 export async function updateUserProfile(data: {
   userId: string
@@ -93,24 +96,34 @@ export async function updateUserProfile(data: {
     const id = parseInt(data.userId)
     if (isNaN(id)) return { success: false, error: 'ID inválido' }
 
-    const user = await prisma.usuarios.findUnique({ where: { id_usuario: id } })
+    const user = await prisma.usuario.findUnique({ 
+      where: { id_usuario: id },
+      include: { login: true }
+    })
     if (!user) return { success: false, error: 'Usuario no encontrado' }
 
     let updateData: any = {
-      nombre_completo: `${data.nombre} ${data.apellido}`.trim()
+      nombres: data.nombre,
+      primer_apellido: data.apellido
     }
     
     if (data.telefono) updateData.telefono = data.telefono
     if (data.genero) updateData.genero = data.genero
     if (data.fecha_nacimiento) updateData.fecha_nacimiento = new Date(data.fecha_nacimiento)
 
-    if (data.newPassword && data.currentPassword) {
-      const isMatch = await bcrypt.compare(data.currentPassword, user.password_hash)
+    // Si hay cambio de contraseña y tiene login
+    if (data.newPassword && data.currentPassword && user.login) {
+      const isMatch = await bcrypt.compare(data.currentPassword, user.login.hash_contrasena)
       if (!isMatch) return { success: false, error: 'La contraseña actual es incorrecta' }
-      updateData.password_hash = await bcrypt.hash(data.newPassword, 10)
+      
+      const newHash = await bcrypt.hash(data.newPassword, 10)
+      await prisma.usuario_login.update({
+        where: { id_usuario: id },
+        data: { hash_contrasena: newHash }
+      })
     }
 
-    await prisma.usuarios.update({
+    await prisma.usuario.update({
       where: { id_usuario: id },
       data: updateData
     })

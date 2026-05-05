@@ -46,7 +46,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatPrice } from '@/lib/store-data'
 import { getColorValue } from '@/lib/color-utils'
 import { getAllProducts } from '@/app/actions/products'
-import { createProduct, updateProductFull } from '@/app/actions/admin'
+import { createProduct, updateProductFull, toggleProductStatus } from '@/app/actions/admin'
 import { getColores } from '@/app/actions/location'
 import type { Product } from '@/lib/store-types'
 
@@ -90,7 +90,7 @@ export default function AdminProductsPage() {
 
   const loadProducts = () => {
     setLoading(true)
-    getAllProducts().then(data => {
+    getAllProducts(true).then(data => { // true para ver inactivos también
       setDbProducts(data)
       setLoading(false)
     })
@@ -266,6 +266,7 @@ export default function AdminProductsPage() {
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Precio</TableHead>
                 <TableHead className="text-right">Stock</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -297,6 +298,13 @@ export default function AdminProductsPage() {
                     <TableCell className="text-right font-medium">{formatPrice(product.precio)}</TableCell>
                     <TableCell className="text-right">{product.tallas.reduce((acc, t) => acc + t.stock, 0)}</TableCell>
                     <TableCell>
+                      {product.activo ? (
+                        <Badge className="bg-green-500 hover:bg-green-600">Activo</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Inactivo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
@@ -305,8 +313,19 @@ export default function AdminProductsPage() {
                           <DropdownMenuItem onClick={() => handleEditClick(product)}>
                             <Edit className="h-4 w-4 mr-2" /> Editar Detalles
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive"><Trash2 className="h-4 w-4 mr-2" /> Eliminar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            const action = product.activo ? 'desactivar' : 'activar'
+                            if(confirm(`¿Estás seguro de ${action} este producto?`)) {
+                              const res = await toggleProductStatus(product.id, !product.activo)
+                              if (res.success) loadProducts()
+                            }
+                          }} className={product.activo ? "text-destructive" : "text-green-600"}>
+                            {product.activo ? (
+                              <><X className="h-4 w-4 mr-2" /> Desactivar</>
+                            ) : (
+                              <><Check className="h-4 w-4 mr-2" /> Activar</>
+                            )}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
