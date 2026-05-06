@@ -13,34 +13,47 @@ export default async function OfertasPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section para Ofertas */}
-      <section className="relative py-20 overflow-hidden bg-zinc-950 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(220,38,38,0.15),transparent)] pointer-events-none" />
-        <div className="container relative mx-auto px-4">
+      <section className="relative py-24 md:py-32 overflow-hidden bg-zinc-900 text-white">
+        {/* Imagen de fondo con overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/images/ofertas-bg.png" 
+            alt="Ofertas Barefoot" 
+            className="w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+        </div>
+
+        <div className="container relative z-10 mx-auto px-4">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-sm font-medium mb-6 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 border border-red-600/30 text-red-400 text-sm font-semibold mb-6 animate-pulse">
               <Percent className="w-4 h-4" />
-              <span>Venta de Temporada</span>
+              <span>Venta Exclusiva de Temporada</span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
-              Ofertas <br />Irresistibles
+            <h1 className="text-6xl md:text-7xl font-extrabold tracking-tighter mb-6 leading-[0.9]">
+              <span className="block text-white">OFERTAS</span>
+              <span className="block bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-orange-400">
+                IRRESISTIBLES
+              </span>
             </h1>
-            <p className="text-xl text-zinc-400 mb-8 leading-relaxed max-w-2xl">
-              Equípate con lo mejor del calzado barefoot a precios reducidos. 
-              Calidad premium diseñada para la salud de tus pies, ahora más accesible.
+            <p className="text-xl text-zinc-300 mb-8 leading-relaxed max-w-xl font-medium">
+              Siente la libertad en cada paso. Equípate con lo mejor del calzado barefoot a precios que no volverán. 
             </p>
-            <div className="flex flex-wrap gap-6 text-sm text-zinc-500">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-red-500" />
+            <div className="flex flex-wrap gap-8 text-sm font-bold uppercase tracking-widest text-zinc-400">
+              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3">
+                <Clock className="w-5 h-5 text-red-500" />
                 <span>Tiempo limitado</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-red-500" />
+              <div className="flex items-center gap-2 border-l-2 border-red-600 pl-3">
+                <Tag className="w-5 h-5 text-red-500" />
                 <span>Hasta 40% OFF</span>
               </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* Grid de Productos */}
       <section className="py-16 bg-zinc-50 dark:bg-zinc-900/50 flex-1">
