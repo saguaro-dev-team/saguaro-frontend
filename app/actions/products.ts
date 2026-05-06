@@ -104,12 +104,24 @@ export async function getNewProducts() {
 
 export async function getDiscountedProducts() {
   const modelos = await prisma.modelo.findMany({
-    where: { activo: true },
+    where: { 
+      activo: true,
+      productos: {
+        some: {
+          promociones: {
+            some: {
+              activo: true
+            }
+          }
+        }
+      }
+    },
     include: includeVariantes,
-    take: 4
+    take: 12
   })
   return modelos.map(mapProduct)
 }
+
 
 export async function getProductsByCategoryStr(categoria: string) {
   const cleanCat = (categoria || '').trim().toLowerCase()
