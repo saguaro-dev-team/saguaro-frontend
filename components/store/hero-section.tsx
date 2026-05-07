@@ -9,14 +9,24 @@ export function HeroSection() {
       {/* Dynamic Background Image / Gradient */}
       <div className="absolute inset-0 z-0">
          <Image 
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/saguaro_logo-tE5gHhhbTqxTolGTB4D1n3QrzCEVf4.jpg"
-            alt="Background"
+            src="/images/hero-bg.png"
+            alt="Nature Background"
             fill
-            className="object-cover opacity-10 scale-105 transition-transform duration-1000"
+            className="object-cover opacity-60 transition-transform duration-1000"
             priority
          />
-         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/40" />
-         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+         {/* Logo Watermark */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] scale-150 pointer-events-none">
+            <Image 
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/saguaro_logo-tE5gHhhbTqxTolGTB4D1n3QrzCEVf4.jpg"
+                alt="Saguaro Watermark"
+                width={800}
+                height={800}
+                className="grayscale"
+            />
+         </div>
+         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+         <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 lg:py-32 w-full">

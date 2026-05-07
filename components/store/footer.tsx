@@ -41,12 +41,13 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/saguaro_logo-tE5gHhhbTqxTolGTB4D1n3QrzCEVf4.jpg"
+              src="/images/saguarologo.png"
               alt="Saguaro"
-              width={100}
-              height={100}
-              className="h-20 w-20 rounded-lg"
+              width={150}
+              height={50}
+              className="h-12 w-auto object-contain"
             />
+
             <p className="mt-4 max-w-xs text-sm text-background/80">
               Calzado barefoot de alta calidad para toda la familia. Reconecta con el
               movimiento natural de tus pies.

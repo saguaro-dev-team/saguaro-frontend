@@ -62,12 +62,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="p-4">
         <Link href="/admin" className="flex items-center gap-2">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/saguaro_logo-tE5gHhhbTqxTolGTB4D1n3QrzCEVf4.jpg"
+            src="/images/saguarologo.png"
             alt="Saguaro"
             width={40}
             height={40}
-            className="h-10 w-10 rounded-lg"
+            className="h-10 w-auto object-contain rounded-lg"
           />
+
           <div>
             <span className="font-bold text-sidebar-foreground">Saguaro</span>
             <span className="block text-xs text-sidebar-foreground/60">Panel Admin</span>
@@ -157,12 +158,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
         <Link href="/admin" className="flex items-center gap-2">
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/saguaro_logo-tE5gHhhbTqxTolGTB4D1n3QrzCEVf4.jpg"
+            src="/images/saguarologo.png"
             alt="Saguaro"
             width={32}
             height={32}
-            className="h-8 w-8 rounded-lg"
+            className="h-8 w-auto object-contain rounded-lg"
           />
+
           <span className="font-bold text-sidebar-foreground">Admin</span>
         </Link>
       </header>

@@ -101,13 +101,15 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_2-emd0nRIpusHh6GoYU8XlNziXq5fEYd.jpg"
+              src="/images/saguarologo.png"
               alt="Saguaro Chile"
-              width={160}
-              height={48}
-              className="h-10 w-auto"
+              width={200}
+              height={60}
+              className="h-14 w-auto object-contain"
               priority
             />
+
+
           </Link>
 
           {/* Desktop Navigation */}
