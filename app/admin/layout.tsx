@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  FileText
+  FileText,
+  MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -24,6 +25,7 @@ import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Mensajes', href: '/admin/mensajes', icon: MessageSquare },
   { name: 'Productos', href: '/admin/productos', icon: Package },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
   { name: 'Clientes', href: '/admin/clientes', icon: Users },

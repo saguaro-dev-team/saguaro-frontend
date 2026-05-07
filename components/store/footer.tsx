@@ -21,7 +21,7 @@ const footerLinks = {
   empresa: [
     { name: 'Sobre Nosotros', href: '/nosotros' },
     { name: 'Blog', href: '/blog' },
-    { name: 'Trabaja con Nosotros', href: '/trabaja' },
+    { name: 'Trabaja con Nosotros', href: '/contacto' },
     { name: 'Terminos y Condiciones', href: '/terminos' },
     { name: 'Politica de Privacidad', href: '/privacidad' },
   ],
@@ -55,11 +55,11 @@ export function Footer() {
 
             <div className="mt-6 flex flex-col gap-3 text-sm">
               <a
-                href="mailto:contacto@saguaro.cl"
+                href="mailto:chilesaguaro@outlook.com"
                 className="flex items-center gap-2 hover:text-primary"
               >
                 <Mail className="h-4 w-4" />
-                contacto@saguaro.cl
+                chilesaguaro@outlook.com
               </a>
               <a
                 href="tel:+56912345678"
