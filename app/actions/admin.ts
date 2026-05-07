@@ -4,11 +4,21 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 export async function updateProductType(id: string, nuevoTipo: string) {
-  // En el nuevo esquema, 'tipo' no existe en la DB, era un campo virtual
-  // Para mantener compatibilidad, podríamos ignorarlo o guardarlo en algún lugar.
-  // Por ahora, solo retornamos éxito para no romper el admin.
-  return { success: true }
+  try {
+    await prisma.modelo.update({
+      where: { id_modelo: parseInt(id) },
+      data: { tipo: nuevoTipo }
+    })
+    revalidatePath(`/producto/${id}`)
+    revalidatePath('/admin/productos')
+    revalidatePath('/')
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error actualizando tipo:", error)
+    return { success: false, error: error.message }
+  }
 }
+
 
 export async function getConfiguracion() {
   // Nota: La tabla configuracion_tienda no existe en el esquema final 4.
@@ -61,7 +71,12 @@ export async function updateProductFull(id: string, data: any) {
         nombre_modelo: data.nombre,
         descripcion: data.descripcion,
         id_categoria: isNaN(id_categoria) ? undefined : id_categoria,
+        tipo: data.tipo,
+        uso: data.uso,
+        estilo: data.estilo,
       }
+
+
     })
 
     // 2. Actualizar variantes existentes (simplificado: actualizamos precio y stock de todas)
@@ -109,8 +124,13 @@ export async function createProduct(data: any) {
         id_categoria: isNaN(id_categoria) ? 1 : id_categoria,
         descripcion: data.descripcion,
         marca: "Saguaro",
-        imagen_url: '/placeholder.jpg'
+        imagen_url: '/placeholder.jpg',
+        tipo: data.tipo || 'casual',
+        uso: data.uso || 'walking',
+        estilo: data.estilo || 'casual'
       }
+
+
     })
 
     // 2. Manejar variantes (Colores y Tallas)
@@ -185,3 +205,75 @@ export async function toggleProductStatus(id: string, nuevoEstado: boolean) {
     return { success: false, error: error.message }
   }
 }
+
+export async function getUsuarios() {
+  try {
+    const usuarios = await prisma.usuario.findMany({
+      include: {
+        rol: true,
+        _count: {
+          select: { pedidos: true }
+        }
+      },
+      orderBy: { fecha_registro: 'desc' }
+    })
+    return { success: true, usuarios }
+  } catch (error: any) {
+    console.error("Error obteniendo usuarios:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getUsuarioDetalles(id: number) {
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id_usuario: id },
+      include: {
+        rol: true,
+        pedidos: {
+          include: {
+            articulos: {
+              include: {
+                producto: {
+                  include: {
+                    modelo: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { fecha_pedido: 'desc' }
+        }
+      }
+    })
+    return { success: true, usuario }
+  } catch (error: any) {
+    console.error("Error obteniendo detalles del usuario:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function updateUserRole(id: number, nuevoRol: string) {
+  try {
+    const rol = await prisma.rol.findUnique({
+      where: { nombre_rol: nuevoRol.toLowerCase() }
+    })
+
+    if (!rol) {
+      throw new Error(`El rol ${nuevoRol} no existe`)
+    }
+
+    await prisma.usuario.update({
+      where: { id_usuario: id },
+      data: { id_rol: rol.id_rol }
+    })
+
+    revalidatePath('/admin/clientes')
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error actualizando rol:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+

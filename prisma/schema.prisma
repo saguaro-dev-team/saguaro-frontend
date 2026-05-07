@@ -147,7 +147,12 @@ model modelo {
   descripcion   String      @db.Text
   marca         String      @db.VarChar(100)
   imagen_url    String?     @db.VarChar(255)
+  tipo          String      @default("casual") @db.VarChar(50)
+  uso           String      @default("walking") @db.VarChar(50)
+  estilo        String      @default("casual") @db.VarChar(50)
   activo        Boolean     @default(true)
+
+
   categoria     categoria   @relation(fields: [id_categoria], references: [id_categoria])
   productos     producto[]
 

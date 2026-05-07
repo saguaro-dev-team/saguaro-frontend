@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isAuthenticated = user !== null
-  const isAdmin = user?.role === 'administrador'
+  const isAdmin = user?.role === 'administrador' || user?.role === 'admin'
+
 
   const login = useCallback(async (email: string, password: string): Promise<{success: boolean, error?: string}> => {
     try {
