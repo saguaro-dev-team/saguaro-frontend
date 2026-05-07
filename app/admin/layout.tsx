@@ -112,21 +112,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
         <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
-            className="flex-1 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
             asChild
           >
             <Link href="/">Ver Tienda</Link>
           </Button>
+
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            className="border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+            className="text-sidebar-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
           </Button>
+
         </div>
       </div>
     </>
