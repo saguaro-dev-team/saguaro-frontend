@@ -140,15 +140,27 @@ export default async function HomePage() {
               </Button>
             </div>
 
-            <div className="relative aspect-square rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <div className="text-center text-primary-foreground p-8">
-                <div className="text-6xl font-bold">5mm</div>
-                <div className="mt-2 text-xl">Suela ultrafina</div>
-                <div className="mt-6 text-primary-foreground/80">
-                  Siente cada paso mientras proteges tus pies
+            <div className="relative aspect-square rounded-3xl overflow-hidden group shadow-2xl">
+              {/* Background Technical Image */}
+              <img 
+                src="/images/suela-bg.png" 
+                alt="Suela 5mm" 
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" 
+              />
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/90 to-emerald-900/80 mix-blend-multiply" />
+              
+              <div className="relative h-full flex flex-col items-center justify-center text-center text-primary-foreground p-8">
+                <div className="text-8xl font-black tracking-tighter drop-shadow-2xl animate-pulse">5mm</div>
+                <div className="mt-4 text-2xl font-bold uppercase tracking-widest bg-white/20 backdrop-blur-md px-6 py-2 rounded-full border border-white/30">
+                    Suela ultrafina
+                </div>
+                <div className="mt-8 text-primary-foreground/90 font-medium max-w-[280px] leading-relaxed">
+                  Siente cada paso y reconecta con el suelo mientras proteges tus pies con tecnología de punta.
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </section>
