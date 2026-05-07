@@ -392,3 +392,4 @@ model proveedor {
   email     String? @db.VarChar(100)
   productos producto[]
 }
+
