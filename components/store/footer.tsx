@@ -7,7 +7,7 @@ const footerLinks = {
   tienda: [
     { name: 'Hombre', href: '/categoria/hombre' },
     { name: 'Mujer', href: '/categoria/mujer' },
-    { name: 'Ninos', href: '/categoria/nino' },
+    { name: 'Niños', href: '/categoria/nino' },
     { name: 'Ofertas', href: '/ofertas' },
     { name: 'Nuevos', href: '/nuevos' },
   ],

@@ -28,7 +28,7 @@ export const products: Product[] = [
   {
     id: 'h-002',
     nombre: 'Saguaro Urban Flex',
-    descripcion: 'Calzado casual barefoot perfecto para el dia a dia. Combina estilo urbano con la comodidad natural de un calzado minimalista.',
+    descripcion: 'Calzado casual barefoot perfecto para el día a día. Combina estilo urbano con la comodidad natural de un calzado minimalista.',
     precio: 44990,
     categoria: 'hombre',
     tipo: 'casual',
@@ -68,7 +68,7 @@ export const products: Product[] = [
   {
     id: 'h-004',
     nombre: 'Saguaro Aqua Sport',
-    descripcion: 'Calzado acuatico de secado rapido. Perfecto para playa, kayak o cualquier deporte acuatico.',
+    descripcion: 'Calzado acuático de secado rápido. Perfecto para playa, kayak o cualquier deporte acuático.',
     precio: 29990,
     categoria: 'hombre',
     tipo: 'acuatico',
@@ -90,7 +90,7 @@ export const products: Product[] = [
   {
     id: 'm-001',
     nombre: 'Saguaro Bella Run',
-    descripcion: 'Zapatilla de running barefoot disenada especificamente para el pie femenino. Ligereza y estilo en cada zancada.',
+    descripcion: 'Zapatilla de running barefoot diseñada específicamente para el pie femenino. Ligereza y estilo en cada zancada.',
     precio: 52990,
     precioOriginal: 64990,
     categoria: 'mujer',
@@ -171,11 +171,11 @@ export const products: Product[] = [
     nuevo: true,
   },
 
-  // NINOS
+  // NIÑOS
   {
     id: 'n-001',
     nombre: 'Saguaro Kids Runner',
-    descripcion: 'Zapatilla barefoot para ninos activos. Favorece el desarrollo natural del pie infantil.',
+    descripcion: 'Zapatilla barefoot para niños activos. Favorece el desarrollo natural del pie infantil.',
     precio: 34990,
     precioOriginal: 42990,
     categoria: 'nino',
@@ -221,7 +221,7 @@ export const products: Product[] = [
   {
     id: 'n-003',
     nombre: 'Saguaro Kids Aqua',
-    descripcion: 'Calzado acuatico para ninos. Proteccion y libertad en la playa o piscina.',
+    descripcion: 'Calzado acuático para niños. Protección y libertad en la playa o piscina.',
     precio: 24990,
     categoria: 'nino',
     tipo: 'acuatico',
@@ -242,7 +242,7 @@ export const products: Product[] = [
   {
     id: 'n-004',
     nombre: 'Saguaro Mini Trek',
-    descripcion: 'Botita de trekking para pequenos aventureros. Agarre y proteccion para explorar la naturaleza.',
+    descripcion: 'Botita de trekking para pequeños aventureros. Agarre y protección para explorar la naturaleza.',
     precio: 39990,
     categoria: 'nino',
     tipo: 'trekking',

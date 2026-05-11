@@ -30,13 +30,13 @@ import type { Product, ProductCategory, ProductType } from '@/lib/store-types'
 const categoryNames: Record<string, string> = {
   hombre: 'Hombre',
   mujer: 'Mujer',
-  nino: 'Ninos',
+  nino: 'Niños',
 }
 
 const categoryDescriptions: Record<string, string> = {
-  hombre: 'Descubre nuestra coleccion de calzado barefoot para hombre. Desde running hasta casual, encuentra el par perfecto.',
-  mujer: 'Calzado barefoot disenado para la mujer moderna. Estilo, comodidad y salud en cada paso.',
-  nino: 'Calzado barefoot para ninos que favorece el desarrollo natural del pie. Libertad para crecer.',
+  hombre: 'Descubre nuestra colección de calzado barefoot para hombre. Desde running hasta casual, encuentra el par perfecto.',
+  mujer: 'Calzado barefoot diseñado para la mujer moderna. Estilo, comodidad y salud en cada paso.',
+  nino: 'Calzado barefoot para niños que favorece el desarrollo natural del pie. Libertad para crecer.',
 }
 
 const productTypes: { value: ProductType; label: string }[] = [
