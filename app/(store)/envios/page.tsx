@@ -18,7 +18,7 @@ export default function EnviosPage() {
             Información de Envío
           </h1>
           <p className="text-xl text-white/90 font-medium">
-            Llevamos la experiencia barefoot a la puerta de tu casa en todo Chile.
+            Llevamos la experiencia del calzado ergonómico a la puerta de tu casa en todo Chile.
           </p>
         </div>
       </section>
@@ -150,7 +150,7 @@ export default function EnviosPage() {
                   </div>
                   <div className="ml-12">
                     <h4 className="font-bold text-lg">¡Llegada a tu Hogar!</h4>
-                    <p className="text-muted-foreground text-sm">Recibes tus Saguaro y comienzas a caminar de forma natural.</p>
+                    <p className="text-muted-foreground text-sm">Recibes tu calzado ergonómico Saguaro y comienzas a cuidar la salud de tus pies.</p>
                   </div>
                 </div>
 

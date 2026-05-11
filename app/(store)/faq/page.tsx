@@ -13,16 +13,16 @@ const faqCategories = [
     icon: Ruler,
     questions: [
       {
-        q: '¿Qué es el calzado barefoot?',
-        a: 'El calzado barefoot (o minimalista) está diseñado para interferir lo menos posible con el movimiento natural del pie. Se caracteriza por tener una puntera ancha, suela fina y flexible, y "zero drop" (sin elevación en el talón).'
+        q: '¿Qué es el calzado ergonómico barefoot?',
+        a: 'El calzado ergonómico (o barefoot) está diseñado para respetar la anatomía humana y la salud de tus pies. Se caracteriza por tener una puntera ancha para el libre movimiento de los dedos, suela fina y flexible, y "zero drop" para una postura natural.'
       },
       {
         q: '¿Cómo elijo mi talla correcta?',
-        a: 'Recomendamos medir tu pie en centímetros y consultar nuestra Guía de Tallas. Por lo general, en calzado barefoot se sugiere dejar entre 0.8 y 1.2 cm de espacio extra frente a los dedos.'
+        a: 'Recomendamos medir tu pie en centímetros y consultar nuestra Guía de Tallas. Por lo general, en nuestro calzado ergonómico se sugiere dejar entre 0.8 y 1.2 cm de espacio extra frente a los dedos.'
       },
       {
         q: '¿Son adecuados para hacer deporte?',
-        a: '¡Sí! Tenemos modelos específicos para running, trail y fitness. Sin embargo, si es tu primera vez usando barefoot, te recomendamos un periodo de transición gradual para fortalecer la musculatura de tus pies.'
+        a: '¡Sí! Tenemos modelos específicos para running, trail y fitness. Sin embargo, si es tu primera vez usando calzado ergonómico, te recomendamos un periodo de transición gradual para fortalecer la musculatura de tus pies.'
       }
     ]
   },
@@ -132,7 +132,7 @@ export default function FAQPage() {
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold tracking-tight">¿Aún tienes dudas?</h3>
                 <p className="text-primary-foreground/80 max-w-md mx-auto">
-                    Nuestro equipo de expertos está listo para asesorarte en tu transición al mundo barefoot.
+                    Nuestro equipo de expertos está listo para asesorarte en tu transición hacia un caminar más saludable y ergonómico.
                 </p>
                 <div className="flex flex-wrap justify-center gap-4 pt-2">
                     <a 
