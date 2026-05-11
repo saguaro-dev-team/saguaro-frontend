@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/lib/auth-context'
 import { getRegiones } from '@/app/actions/location'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 
 export default function RegisterPage() {
   const router = useRouter()

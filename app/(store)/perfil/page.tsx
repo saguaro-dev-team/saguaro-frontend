@@ -153,6 +153,7 @@ export default function ProfilePage() {
       updateUser({ nombre: formData.nombre, apellido: formData.apellido })
       setSaveSuccess(true)
       setPasswords({ currentPassword: '', newPassword: '' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       setSaveError(res.error || 'Error al guardar los datos')
     }
