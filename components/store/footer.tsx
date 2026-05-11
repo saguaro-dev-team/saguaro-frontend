@@ -12,8 +12,8 @@ const footerLinks = {
     { name: 'Nuevos', href: '/nuevos' },
   ],
   ayuda: [
-    { name: 'Guia de Tallas', href: '/guia-tallas' },
-    { name: 'Envios', href: '/envios' },
+    { name: 'Guía de Tallas', href: '/guia-tallas' },
+    { name: 'Envíos', href: '/envios' },
     { name: 'Devoluciones', href: '/devoluciones' },
     { name: 'Preguntas Frecuentes', href: '/faq' },
     { name: 'Contacto', href: '/contacto' },
@@ -22,8 +22,8 @@ const footerLinks = {
     { name: 'Sobre Nosotros', href: '/nosotros' },
     { name: 'Blog', href: '/blog' },
     { name: 'Trabaja con Nosotros', href: '/contacto' },
-    { name: 'Terminos y Condiciones', href: '/terminos' },
-    { name: 'Politica de Privacidad', href: '/privacidad' },
+    { name: 'Términos y Condiciones', href: '/terminos' },
+    { name: 'Política de Privacidad', href: '/privacidad' },
   ],
 }
 
@@ -145,7 +145,7 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-4 text-sm text-background/60 md:flex-row">
           <p>&copy; {new Date().getFullYear()} Saguaro Chile. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4">
-            <span>Metodos de pago:</span>
+            <span>Métodos de pago:</span>
             <div className="flex gap-2">
               <span className="rounded bg-background/10 px-2 py-1 text-xs">Webpay</span>
               <span className="rounded bg-background/10 px-2 py-1 text-xs">Transferencia</span>
