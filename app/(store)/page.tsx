@@ -86,13 +86,13 @@ export default async function HomePage() {
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
               <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
-                ¿Por qué Barefoot?
+                ¿Por qué calzado ergonómico?
               </span>
               <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
-                Beneficios del Calzado Barefoot
+                Beneficios del Calzado Ergonómico
               </h2>
               <p className="mt-4 text-muted-foreground text-pretty">
-                El calzado barefoot está diseñado para permitir que tus pies se muevan
+                Nuestro calzado ergonómico está diseñado para respetar la salud de tus pies y permitir que se muevan
                 de forma natural, como si estuvieras descalzo pero con la protección
                 necesaria.
               </p>
@@ -134,7 +134,7 @@ export default async function HomePage() {
 
               <Button className="mt-8" asChild>
                 <Link href="/nosotros">
-                  Conoce mas sobre Saguaro
+                  Conoce más sobre Saguaro
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

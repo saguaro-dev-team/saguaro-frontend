@@ -39,8 +39,8 @@ export function HeroSection() {
             <span className="block text-foreground mt-2">Vive Libre</span>
           </h1>
           <p className="mt-6 text-lg text-muted-foreground sm:max-w-xl md:text-xl text-pretty">
-            Descubre el calzado barefoot que te permite reconectar con el movimiento
-            natural de tus pies. Comodidad, salud y estilo en cada paso.
+            Descubre nuestro calzado ergonómico diseñado para reconectar con el movimiento
+            natural de tus pies y mejorar tu salud postural. Bienestar en cada paso.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
             <Button
