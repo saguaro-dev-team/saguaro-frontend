@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getRegiones } from '@/app/actions/location'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { formatRut } from '@/lib/utils'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -176,9 +177,12 @@ export default function RegisterPage() {
                     id="rut"
                     name="rut"
                     type="text"
-                    placeholder="12345678-9"
+                    placeholder="12.345.678-9"
                     value={formData.rut}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const formatted = formatRut(e.target.value);
+                      setFormData({ ...formData, rut: formatted });
+                    }}
                     required
                   />
                 </div>
@@ -284,7 +288,7 @@ export default function RegisterPage() {
                     <SelectContent>
                       {regionesData.map((reg) => (
                         <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
-                          {reg.nombre_region}
+                          {reg.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -299,7 +303,7 @@ export default function RegisterPage() {
                     <SelectContent>
                       {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
                         <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
-                          {com.nombre_comuna}
+                          {com.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -301,7 +301,7 @@ export default function ProfilePage() {
                       {direcciones[0].calle} {direcciones[0].numero}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {direcciones[0].comuna?.nombre_comuna}, {direcciones[0].comuna?.region?.nombre_region}
+                      {direcciones[0].comuna?.nombre}, {direcciones[0].comuna?.region?.nombre}
                     </p>
                   </div>
                 )}
@@ -475,7 +475,7 @@ export default function ProfilePage() {
                             </p>
                           )}
                           <p className="text-sm text-muted-foreground">
-                            {dir.comuna?.nombre_comuna || 'Sin comuna'}, {dir.comuna?.region?.nombre_region || 'Sin región'}
+                            {dir.comuna?.nombre || 'Sin comuna'}, {dir.comuna?.region?.nombre || 'Sin región'}
                           </p>
                         </div>
                       </div>
@@ -512,7 +512,7 @@ export default function ProfilePage() {
                             <SelectContent>
                               {regionesData.map((reg) => (
                                 <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
-                                  {reg.nombre_region}
+                                  {reg.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -527,7 +527,7 @@ export default function ProfilePage() {
                             <SelectContent>
                               {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
                                 <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
-                                  {com.nombre_comuna}
+                                  {com.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>

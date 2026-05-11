@@ -61,10 +61,10 @@ export interface Address {
   id_comuna: number
   comuna?: {
     id_comuna: number
-    nombre_comuna: string
+    nombre: string
     region: {
       id_region: number
-      nombre_region: string
+      nombre: string
     }
   }
   is_active: boolean

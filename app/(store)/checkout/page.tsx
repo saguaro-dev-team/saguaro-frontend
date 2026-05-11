@@ -284,7 +284,7 @@ export default function CheckoutPage() {
                         <SelectContent>
                           {regionesData.map((reg) => (
                             <SelectItem key={reg.id_region} value={reg.id_region.toString()}>
-                              {reg.nombre_region}
+                              {reg.nombre}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -303,7 +303,7 @@ export default function CheckoutPage() {
                         <SelectContent>
                           {regionesData.find(r => r.id_region === selectedRegionId)?.comunas.map((com: any) => (
                             <SelectItem key={com.id_comuna} value={com.id_comuna.toString()}>
-                              {com.nombre_comuna}
+                              {com.nombre}
                             </SelectItem>
                           ))}
                         </SelectContent>
