@@ -230,6 +230,16 @@ export async function getUsuarioDetalles(id: number) {
       where: { id_usuario: id },
       include: {
         rol: true,
+        direcciones: {
+          where: { activa: true },
+          include: {
+            comuna: {
+              include: {
+                region: true
+              }
+            }
+          }
+        },
         pedidos: {
           include: {
             articulos: {

@@ -13,7 +13,7 @@ export default function PrivacidadPage() {
           </Badge>
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic text-foreground mb-6">
             Política de Privacidad
-          </Badge>
+          </h1>
           <p className="text-lg text-muted-foreground font-medium max-w-2xl mx-auto">
             En Saguaro Chile nos tomamos muy en serio la seguridad de tu información personal. Aquí te explicamos cómo la protegemos.
           </p>

@@ -16,7 +16,8 @@ export async function getUserProfile(userId: string) {
         genero: true,
         fecha_nacimiento: true,
         nombres: true,
-        primer_apellido: true
+        primer_apellido: true,
+        segundo_apellido: true
       }
     })
     
@@ -84,8 +85,9 @@ export async function addAddress(data: {
 
 export async function updateUserProfile(data: {
   userId: string
-  nombre: string
-  apellido: string
+  nombres: string
+  primer_apellido: string
+  segundo_apellido: string
   telefono?: string
   genero?: string
   fecha_nacimiento?: string
@@ -103,8 +105,9 @@ export async function updateUserProfile(data: {
     if (!user) return { success: false, error: 'Usuario no encontrado' }
 
     let updateData: any = {
-      nombres: data.nombre,
-      primer_apellido: data.apellido
+      nombres: data.nombres,
+      primer_apellido: data.primer_apellido,
+      segundo_apellido: data.segundo_apellido
     }
     
     if (data.telefono) updateData.telefono = data.telefono

@@ -51,9 +51,9 @@ export default function LoginPage() {
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_2-emd0nRIpusHh6GoYU8XlNziXq5fEYd.jpg"
               alt="Saguaro Chile"
-              width={180}
-              height={54}
-              className="h-12 w-auto mx-auto"
+              width={300}
+              height={90}
+              className="h-20 w-auto mx-auto"
             />
           </Link>
         </div>

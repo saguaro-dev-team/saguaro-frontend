@@ -33,8 +33,9 @@ export default function RegisterPage() {
   }, [isAuthenticated])
   
   const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
+    nombres: '',
+    primer_apellido: '',
+    segundo_apellido: '',
     email: '',
     rut: '',
     telefono: '',
@@ -82,8 +83,9 @@ export default function RegisterPage() {
     const result = await register({
       email: formData.email,
       password: formData.password,
-      nombre: formData.nombre,
-      apellido: formData.apellido,
+      nombres: formData.nombres,
+      primer_apellido: formData.primer_apellido,
+      segundo_apellido: formData.segundo_apellido,
       rut: formData.rut,
       telefono: formData.telefono,
       genero: formData.genero,
@@ -110,9 +112,9 @@ export default function RegisterPage() {
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_2-emd0nRIpusHh6GoYU8XlNziXq5fEYd.jpg"
               alt="Saguaro Chile"
-              width={180}
-              height={54}
-              className="h-12 w-auto mx-auto"
+              width={300}
+              height={90}
+              className="h-20 w-auto mx-auto"
             />
           </Link>
         </div>
@@ -132,26 +134,41 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              <div className="space-y-2">
+                <Label htmlFor="nombres">Nombres</Label>
+                <Input
+                  id="nombres"
+                  name="nombres"
+                  placeholder="Juan Andres"
+                  value={formData.nombres}
+                  onChange={handleChange}
+                  maxLength={100}
+                  required
+                />
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre</Label>
+                  <Label htmlFor="primer_apellido">Primer Apellido</Label>
                   <Input
-                    id="nombre"
-                    name="nombre"
-                    placeholder="Juan"
-                    value={formData.nombre}
+                    id="primer_apellido"
+                    name="primer_apellido"
+                    placeholder="Perez"
+                    value={formData.primer_apellido}
                     onChange={handleChange}
+                    maxLength={50}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="apellido">Apellido</Label>
+                  <Label htmlFor="segundo_apellido">Segundo Apellido</Label>
                   <Input
-                    id="apellido"
-                    name="apellido"
-                    placeholder="Perez"
-                    value={formData.apellido}
+                    id="segundo_apellido"
+                    name="segundo_apellido"
+                    placeholder="Soto"
+                    value={formData.segundo_apellido}
                     onChange={handleChange}
+                    maxLength={50}
                     required
                   />
                 </div>
@@ -166,6 +183,7 @@ export default function RegisterPage() {
                   placeholder="tu@email.com"
                   value={formData.email}
                   onChange={handleChange}
+                  maxLength={100}
                   required
                 />
               </div>
@@ -181,8 +199,11 @@ export default function RegisterPage() {
                     value={formData.rut}
                     onChange={(e) => {
                       const formatted = formatRut(e.target.value);
-                      setFormData({ ...formData, rut: formatted });
+                      if (formatted.length <= 12) {
+                        setFormData({ ...formData, rut: formatted });
+                      }
                     }}
+                    maxLength={12}
                     required
                   />
                 </div>
@@ -192,9 +213,13 @@ export default function RegisterPage() {
                     id="telefono"
                     name="telefono"
                     type="tel"
-                    placeholder="+56 9 1234 5678"
+                    placeholder="912345678"
                     value={formData.telefono}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setFormData({ ...formData, telefono: val });
+                    }}
+                    maxLength={9}
                     required
                   />
                 </div>
@@ -209,6 +234,8 @@ export default function RegisterPage() {
                     type="date"
                     value={formData.fecha_nacimiento}
                     onChange={handleChange}
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 12)).toISOString().split('T')[0]}
+                    min={new Date(new Date().setFullYear(new Date().getFullYear() - 110)).toISOString().split('T')[0]}
                     required
                   />
                 </div>
@@ -314,17 +341,17 @@ export default function RegisterPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="calle">Calle</Label>
-                  <Input id="calle" name="calle" placeholder="Ej: Av. Providencia" value={formData.calle} onChange={handleChange} required />
+                  <Input id="calle" name="calle" placeholder="Ej: Av. Providencia" value={formData.calle} onChange={handleChange} maxLength={100} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="numero">Número</Label>
-                  <Input id="numero" name="numero" placeholder="1234" value={formData.numero} onChange={handleChange} required />
+                  <Input id="numero" name="numero" placeholder="1234" value={formData.numero} onChange={handleChange} maxLength={10} required />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="detalles">Depto / Casa / Referencia (Opcional)</Label>
-                <Input id="detalles" name="detalles" placeholder="Depto 402, Block B..." value={formData.detalles} onChange={handleChange} />
+                <Input id="detalles" name="detalles" placeholder="Depto 402, Block B..." value={formData.detalles} onChange={handleChange} maxLength={100} />
               </div>
 
               <label className="flex items-start gap-2 cursor-pointer">

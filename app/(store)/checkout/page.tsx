@@ -36,8 +36,9 @@ export default function CheckoutPage() {
 
   const [formData, setFormData] = useState({
     email: user?.email || '',
-    nombre: user?.nombre || '',
-    apellido: user?.apellido || '',
+    nombres: user?.nombre || '',
+    primer_apellido: user?.apellido || '',
+    segundo_apellido: '',
     telefono: user?.telefono || '',
     calle: '',
     numero: '',
@@ -183,6 +184,7 @@ export default function CheckoutPage() {
                         type="email"
                         value={formData.email}
                         onChange={handleInputChange}
+                        maxLength={100}
                         required
                       />
                     </div>
@@ -193,7 +195,12 @@ export default function CheckoutPage() {
                         name="telefono"
                         type="tel"
                         value={formData.telefono}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({ ...formData, telefono: val });
+                        }}
+                        maxLength={9}
+                        placeholder="912345678"
                         required
                       />
                     </div>
@@ -201,22 +208,38 @@ export default function CheckoutPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="nombre">Nombre</Label>
+                      <Label htmlFor="nombres">Nombres</Label>
                       <Input
-                        id="nombre"
-                        name="nombre"
-                        value={formData.nombre}
+                        id="nombres"
+                        name="nombres"
+                        value={formData.nombres}
                         onChange={handleInputChange}
+                        maxLength={100}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="primer_apellido">Primer Apellido</Label>
+                      <Input
+                        id="primer_apellido"
+                        name="primer_apellido"
+                        value={formData.primer_apellido}
+                        onChange={handleInputChange}
+                        maxLength={50}
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="apellido">Apellido</Label>
+                      <Label htmlFor="segundo_apellido">Segundo Apellido</Label>
                       <Input
-                        id="apellido"
-                        name="apellido"
-                        value={formData.apellido}
+                        id="segundo_apellido"
+                        name="segundo_apellido"
+                        value={formData.segundo_apellido}
                         onChange={handleInputChange}
+                        maxLength={50}
                         required
                       />
                     </div>
@@ -232,6 +255,7 @@ export default function CheckoutPage() {
                         name="calle"
                         value={formData.calle}
                         onChange={handleInputChange}
+                        maxLength={100}
                         required
                       />
                     </div>
@@ -242,6 +266,7 @@ export default function CheckoutPage() {
                         name="numero"
                         value={formData.numero}
                         onChange={handleInputChange}
+                        maxLength={10}
                         required
                       />
                     </div>
@@ -255,6 +280,7 @@ export default function CheckoutPage() {
                         name="departamento"
                         value={formData.departamento}
                         onChange={handleInputChange}
+                        maxLength={20}
                       />
                     </div>
                     <div className="space-y-2">
@@ -264,6 +290,7 @@ export default function CheckoutPage() {
                         name="codigoPostal"
                         value={formData.codigoPostal}
                         onChange={handleInputChange}
+                        maxLength={10}
                       />
                     </div>
                   </div>

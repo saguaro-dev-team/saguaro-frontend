@@ -17,8 +17,9 @@ interface AuthContextType {
 interface RegisterData {
   email: string
   password: string
-  nombre: string
-  apellido: string
+  nombres: string
+  primer_apellido: string
+  segundo_apellido: string
   rut: string
   telefono: string
   genero: string

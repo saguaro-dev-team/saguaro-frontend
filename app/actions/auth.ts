@@ -6,8 +6,9 @@ import bcrypt from 'bcryptjs'
 export async function registerUser(data: {
   email: string
   password: string
-  nombre: string
-  apellido: string
+  nombres: string
+  primer_apellido: string
+  segundo_apellido: string
   rut: string
   telefono: string
   genero: string
@@ -47,9 +48,9 @@ export async function registerUser(data: {
 
       const user = await tx.usuario.create({
         data: {
-          nombres: data.nombre,
-          primer_apellido: data.apellido,
-          segundo_apellido: '', // Si tuvieran 2 apellidos se agregaría aquí
+          nombres: data.nombres,
+          primer_apellido: data.primer_apellido,
+          segundo_apellido: data.segundo_apellido,
           rut: data.rut,
           direccion_email: data.email,
           telefono: data.telefono,

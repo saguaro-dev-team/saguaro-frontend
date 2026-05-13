@@ -88,7 +88,7 @@ export default function AdminClientesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-            Clientes y Usuarios
+            Usuarios
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-2">
             Gestiona la base de datos de usuarios registrados en Saguaro.
@@ -116,7 +116,7 @@ export default function AdminClientesPage() {
         </Card>
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-950">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Activos</CardTitle>
+            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -142,7 +142,7 @@ export default function AdminClientesPage() {
       <Card className="border-none shadow-xl overflow-hidden">
         <CardHeader className="bg-zinc-50/50 dark:bg-zinc-900/50 border-b">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle>Listado de Clientes</CardTitle>
+                <CardTitle>Listado de Usuarios</CardTitle>
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                     <Input 
@@ -158,7 +158,7 @@ export default function AdminClientesPage() {
           <Table>
             <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
               <TableRow>
-                <TableHead className="font-bold">Cliente</TableHead>
+                <TableHead className="font-bold">Usuario</TableHead>
                 <TableHead className="font-bold">RUT</TableHead>
                 <TableHead className="font-bold">Rol</TableHead>
                 <TableHead className="font-bold">Registro</TableHead>
@@ -243,27 +243,32 @@ export default function AdminClientesPage() {
       {/* User Details Sheet */}
       <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
         <SheetContent className="sm:max-w-2xl overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Detalles del Usuario</SheetTitle>
+            <SheetDescription>Información completa del perfil y actividad.</SheetDescription>
+          </SheetHeader>
+
           {loadingDetails ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-64">
                 <Clock className="w-10 h-10 animate-spin text-primary" />
             </div>
           ) : selectedUser ? (
-            <div className="space-y-8 py-6">
-                <SheetHeader>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold border border-primary/20">
-                            {selectedUser.nombres[0]}{selectedUser.primer_apellido[0]}
-                        </div>
-                        <div>
-                            <SheetTitle className="text-2xl font-bold">
-                                {selectedUser.nombres} {selectedUser.primer_apellido} {selectedUser.segundo_apellido}
-                            </SheetTitle>
-                            <SheetDescription className="flex items-center gap-2">
-                                <Badge variant="outline">{selectedUser.rol?.nombre_rol || 'Cliente'}</Badge>
-                                <span>RUT: {selectedUser.rut}</span>
-                            </SheetDescription>
+            <div className="space-y-8">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold border border-primary/20">
+                        {selectedUser.nombres[0]}{selectedUser.primer_apellido[0]}
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold">
+                            {selectedUser.nombres} {selectedUser.primer_apellido} {selectedUser.segundo_apellido}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">{selectedUser.rol?.nombre_rol || 'Usuario'}</Badge>
+                            <span className="text-sm text-zinc-500">RUT: {selectedUser.rut}</span>
                         </div>
                     </div>
+                </div>
+
                     <div className="flex gap-2">
                         <Button 
                             variant="outline" 
@@ -279,38 +284,76 @@ export default function AdminClientesPage() {
                                 }
                             }}
                         >
-                            Cambiar a {selectedUser.rol?.nombre_rol === 'admin' ? 'Cliente' : 'Admin'}
+                            Cambiar a {selectedUser.rol?.nombre_rol === 'admin' ? 'Usuario' : 'Admin'}
                         </Button>
                     </div>
-                </SheetHeader>
 
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Contacto</p>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                                <Mail className="w-4 h-4 text-primary" />
-                                {selectedUser.direccion_email}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-zinc-50 dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Información de Contacto</p>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 text-sm">
+                                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border">
+                                    <Mail className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-medium">{selectedUser.direccion_email}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-4 h-4 text-primary" />
-                                {selectedUser.telefono}
+                            <div className="flex items-center gap-3 text-sm">
+                                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border">
+                                    <Phone className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-medium">+56 {selectedUser.telefono}</span>
                             </div>
                         </div>
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Perfil</p>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                                <User className="w-4 h-4 text-primary" />
-                                {selectedUser.genero}
+                    <div className="bg-zinc-50 dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Perfil de Usuario</p>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 text-sm">
+                                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border">
+                                    <User className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-medium capitalize">{selectedUser.genero}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <Calendar className="w-4 h-4 text-primary" />
-                                Nacimiento: {new Date(selectedUser.fecha_nacimiento).toLocaleDateString()}
+                            <div className="flex items-center gap-3 text-sm">
+                                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border">
+                                    <Calendar className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-medium">{new Date(selectedUser.fecha_nacimiento).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-primary" />
+                        Direcciones Registradas
+                    </h3>
+                    <div className="grid gap-4">
+                        {selectedUser.direcciones?.length > 0 ? (
+                            selectedUser.direcciones.map((dir: any) => (
+                                <div key={dir.id_direccion} className="p-4 rounded-2xl border bg-white dark:bg-zinc-950 shadow-sm flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
+                                        <MapPin className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <p className="font-bold text-zinc-900 dark:text-white">{dir.calle} {dir.numero}</p>
+                                            {dir.es_principal && <Badge variant="secondary" className="text-[9px] h-4">Principal</Badge>}
+                                        </div>
+                                        {dir.detalles && <p className="text-xs text-zinc-500 mb-1">{dir.detalles}</p>}
+                                        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                            {dir.comuna?.nombre}, {dir.comuna?.region?.nombre}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-6 bg-zinc-50 dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
+                                <p className="text-zinc-400 text-sm">No hay direcciones registradas.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -347,7 +390,7 @@ export default function AdminClientesPage() {
                             ))
                         ) : (
                             <div className="text-center py-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-                                <p className="text-zinc-400 text-sm italic">Este cliente aún no ha realizado compras.</p>
+                                <p className="text-zinc-400 text-sm italic">Este usuario aún no ha realizado compras.</p>
                             </div>
                         )}
                     </div>

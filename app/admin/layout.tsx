@@ -28,7 +28,7 @@ const navigation = [
   { name: 'Mensajes', href: '/admin/mensajes', icon: MessageSquare },
   { name: 'Productos', href: '/admin/productos', icon: Package },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
-  { name: 'Clientes', href: '/admin/clientes', icon: Users },
+  { name: 'Usuarios', href: '/admin/clientes', icon: Users },
   { name: 'Blog', href: '/admin/blog', icon: FileText },
   { name: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
   { name: 'Configuracion', href: '/admin/configuracion', icon: Settings },

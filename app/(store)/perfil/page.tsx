@@ -24,8 +24,9 @@ export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuth()
   
   const [formData, setFormData] = useState({
-    nombre: user?.nombre || '',
-    apellido: user?.apellido || '',
+    nombres: user?.nombre || '',
+    primer_apellido: user?.apellido || '',
+    segundo_apellido: '',
     email: user?.email || '',
     rut: '',
     telefono: '',
@@ -65,6 +66,9 @@ export default function ProfilePage() {
         if (res.success && res.profile) {
           setFormData(prev => ({
             ...prev,
+            nombres: res.profile.nombres || '',
+            primer_apellido: res.profile.primer_apellido || '',
+            segundo_apellido: res.profile.segundo_apellido || '',
             rut: res.profile.rut || '',
             telefono: res.profile.telefono || '',
             genero: res.profile.genero || '',
@@ -140,8 +144,9 @@ export default function ProfilePage() {
     
     const res = await updateUserProfile({
       userId: user.id,
-      nombre: formData.nombre,
-      apellido: formData.apellido,
+      nombres: formData.nombres,
+      primer_apellido: formData.primer_apellido,
+      segundo_apellido: formData.segundo_apellido,
       telefono: formData.telefono,
       genero: formData.genero,
       fecha_nacimiento: formData.fecha_nacimiento,
@@ -150,7 +155,7 @@ export default function ProfilePage() {
     })
     
     if (res.success) {
-      updateUser({ nombre: formData.nombre, apellido: formData.apellido })
+      updateUser({ nombre: formData.nombres, apellido: formData.primer_apellido })
       setSaveSuccess(true)
       setPasswords({ currentPassword: '', newPassword: '' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -249,23 +254,36 @@ export default function ProfilePage() {
                   </div>
                 )}
 
+                <div className="space-y-2">
+                  <Label htmlFor="nombres">Nombres</Label>
+                  <Input
+                    id="nombres"
+                    name="nombres"
+                    value={formData.nombres}
+                    onChange={handleChange}
+                    maxLength={100}
+                  />
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre</Label>
+                    <Label htmlFor="primer_apellido">Primer Apellido</Label>
                     <Input
-                      id="nombre"
-                      name="nombre"
-                      value={formData.nombre}
+                      id="primer_apellido"
+                      name="primer_apellido"
+                      value={formData.primer_apellido}
                       onChange={handleChange}
+                      maxLength={50}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="apellido">Apellido</Label>
+                    <Label htmlFor="segundo_apellido">Segundo Apellido</Label>
                     <Input
-                      id="apellido"
-                      name="apellido"
-                      value={formData.apellido}
+                      id="segundo_apellido"
+                      name="segundo_apellido"
+                      value={formData.segundo_apellido}
                       onChange={handleChange}
+                      maxLength={50}
                     />
                   </div>
                 </div>
@@ -313,7 +331,11 @@ export default function ProfilePage() {
                       id="telefono"
                       name="telefono"
                       value={formData.telefono}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setFormData({ ...formData, [e.target.name]: val })
+                      }}
+                      maxLength={9}
                     />
                   </div>
                   <div className="space-y-2">
@@ -324,6 +346,8 @@ export default function ProfilePage() {
                       type="date"
                       value={formData.fecha_nacimiento}
                       onChange={handleChange}
+                      max={new Date(new Date().setFullYear(new Date().getFullYear() - 12)).toISOString().split('T')[0]}
+                      min={new Date(new Date().setFullYear(new Date().getFullYear() - 110)).toISOString().split('T')[0]}
                     />
                   </div>
                   <div className="space-y-2">
@@ -488,16 +512,16 @@ export default function ProfilePage() {
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="calle">Calle</Label>
-                          <Input required id="calle" value={newAddress.calle} onChange={(e) => setNewAddress({...newAddress, calle: e.target.value})} placeholder="Ej. Av. Providencia" />
+                          <Input required id="calle" value={newAddress.calle} onChange={(e) => setNewAddress({...newAddress, calle: e.target.value})} placeholder="Ej. Av. Providencia" maxLength={100} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="numero">Número</Label>
-                          <Input required id="numero" value={newAddress.numero} onChange={(e) => setNewAddress({...newAddress, numero: e.target.value})} placeholder="1234" />
+                          <Input required id="numero" value={newAddress.numero} onChange={(e) => setNewAddress({...newAddress, numero: e.target.value})} placeholder="1234" maxLength={10} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="detalles">Detalles (Depto, block, indicaciones)</Label>
-                        <Input id="detalles" value={newAddress.detalles} onChange={(e) => setNewAddress({...newAddress, detalles: e.target.value})} placeholder="Depto 402, Torre B..." />
+                        <Input id="detalles" value={newAddress.detalles} onChange={(e) => setNewAddress({...newAddress, detalles: e.target.value})} placeholder="Depto 402, Torre B..." maxLength={100} />
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
