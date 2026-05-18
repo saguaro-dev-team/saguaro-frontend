@@ -2,6 +2,24 @@
 
 import { prisma } from '@/lib/prisma'
 import type { Product, ProductCategory, ProductType, ProductSize } from '@/lib/store-types'
+import fs from 'fs'
+import path from 'path'
+
+let manifestCache: Record<string, Record<string, string[]>> | null = null;
+function getManifest() {
+  if (manifestCache) return manifestCache;
+  try {
+    const p = path.join(process.cwd(), 'public', 'images-manifest.json');
+    if (fs.existsSync(p)) {
+      manifestCache = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } else {
+      manifestCache = {};
+    }
+  } catch(e) {
+    manifestCache = {};
+  }
+  return manifestCache;
+}
 
 function mapProduct(m: any): Product {
   const isNino = m.categoria?.nombre_categoria === 'Niño'
@@ -41,6 +59,22 @@ function mapProduct(m: any): Product {
 
   const isNuevo = variantes.some((v:any) => v.novedades && v.novedades.length > 0)
 
+  const manifest = getManifest();
+  const cleanModelName = m.nombre_modelo.replace(/-/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const modelImages = manifest[cleanModelName] || manifest[m.nombre_modelo] || {};
+  const imagenesPorColor: Record<string, string[]> = {};
+  
+  Array.from(coloresSet).forEach(c => {
+     const cleanColorName = c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+     imagenesPorColor[c] = modelImages[cleanColorName] || [];
+  });
+
+  const firstColor = Array.from(coloresSet)[0];
+  const firstColorClean = firstColor ? firstColor.charAt(0).toUpperCase() + firstColor.slice(1).toLowerCase() : '';
+  const fallbackImages = (firstColorClean && modelImages[firstColorClean] && modelImages[firstColorClean].length > 0) 
+      ? modelImages[firstColorClean] 
+      : (m.imagen_url ? [m.imagen_url] : ['/placeholder.jpg']);
+
   return {
     id: String(m.id_modelo),
     nombre: m.nombre_modelo,
@@ -52,7 +86,8 @@ function mapProduct(m: any): Product {
     genero: isHombre ? 'hombre' : isNino ? 'nino' : 'mujer',
     uso: m.uso || 'walking',
     estilo: m.estilo || 'casual',
-    imagenes: m.imagen_url ? [m.imagen_url] : ['/placeholder.jpg'],
+    imagenes: fallbackImages,
+    imagenesPorColor,
     tallas: tallasArray,
     colores: Array.from(coloresSet),
     caracteristicas: ['Suela Flexible 5mm', 'Zero Drop', 'Puntera ancha'],

@@ -30,6 +30,7 @@ export interface Product {
   uso?: string
   estilo?: string
   imagenes: string[]
+  imagenesPorColor?: Record<string, string[]>
   tallas: ProductSize[]
   colores: string[]
   colorSeleccionado?: string

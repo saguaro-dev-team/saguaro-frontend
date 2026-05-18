@@ -43,6 +43,7 @@ export default function ProductPage({ params }: PageProps) {
 
   const [selectedTalla, setSelectedTalla] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = useState<string>('')
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
@@ -75,6 +76,12 @@ export default function ProductPage({ params }: PageProps) {
 
   const hasDiscount = product.descuento && product.precioOriginal
 
+  const currentImages = (selectedColor && product.imagenesPorColor && product.imagenesPorColor[selectedColor] && product.imagenesPorColor[selectedColor].length > 0)
+    ? product.imagenesPorColor[selectedColor]
+    : product.imagenes;
+
+  const currentMainImage = currentImages[currentImageIndex] || currentImages[0] || '/placeholder.jpg';
+
   const handleAddToCart = () => {
     if (!selectedTalla || !product) return
     addItem(product, selectedTalla, selectedColor, quantity)
@@ -101,35 +108,54 @@ export default function ProductPage({ params }: PageProps) {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Product Image */}
-          <div className="relative aspect-square rounded-2xl bg-muted overflow-hidden">
-            {product.imagenes && product.imagenes[0] && product.imagenes[0] !== '/placeholder.jpg' ? (
-              <img src={product.imagenes[0]} alt={product.nombre} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                <ShoppingBag className="h-32 w-32 text-muted-foreground/20" />
+          {/* Product Image and Gallery */}
+          <div className="flex flex-col gap-4">
+            <div className="relative aspect-square rounded-2xl bg-muted overflow-hidden">
+              {currentMainImage !== '/placeholder.jpg' ? (
+                <img src={currentMainImage} alt={product.nombre} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                  <ShoppingBag className="h-32 w-32 text-muted-foreground/20" />
+                </div>
+              )}
+
+              {/* Badges */}
+              <div className="absolute left-4 top-4 flex flex-col gap-2">
+                {product.nuevo && (
+                  <Badge className="bg-primary text-primary-foreground">Nuevo</Badge>
+                )}
+                {hasDiscount && (
+                  <Badge variant="destructive">-{product.descuento}%</Badge>
+                )}
+              </div>
+
+              {/* Wishlist button */}
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute right-4 top-4 rounded-full"
+              >
+                <Heart className="h-5 w-5" />
+                <span className="sr-only">Agregar a favoritos</span>
+              </Button>
+            </div>
+            
+            {/* Image Thumbnails */}
+            {currentImages.length > 1 && (
+              <div className="grid grid-cols-6 gap-2">
+                {currentImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
+                      currentImageIndex === idx ? 'border-primary ring-2 ring-primary/50' : 'border-transparent hover:border-muted-foreground'
+                    }`}
+                  >
+                    <img src={img} alt={`${product.nombre} view ${idx + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
               </div>
             )}
-
-            {/* Badges */}
-            <div className="absolute left-4 top-4 flex flex-col gap-2">
-              {product.nuevo && (
-                <Badge className="bg-primary text-primary-foreground">Nuevo</Badge>
-              )}
-              {hasDiscount && (
-                <Badge variant="destructive">-{product.descuento}%</Badge>
-              )}
-            </div>
-
-            {/* Wishlist button */}
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute right-4 top-4 rounded-full"
-            >
-              <Heart className="h-5 w-5" />
-              <span className="sr-only">Agregar a favoritos</span>
-            </Button>
           </div>
 
           {/* Product Info */}
@@ -165,7 +191,10 @@ export default function ProductPage({ params }: PageProps) {
                 {product.colores.map((color) => (
                   <button
                     key={color}
-                    onClick={() => setSelectedColor(color)}
+                    onClick={() => {
+                      setSelectedColor(color)
+                      setCurrentImageIndex(0)
+                    }}
                     className={`h-10 w-10 rounded-full border-2 transition-all ${
                       selectedColor === color
                         ? 'border-primary ring-2 ring-primary ring-offset-2'
