@@ -17,24 +17,60 @@ import { CriticalStock } from '@/components/dashboard/critical-stock'
 import { RecentOrders } from '@/components/dashboard/recent-orders'
 import { CategoryChart } from '@/components/dashboard/category-chart'
 import { HourlyChart } from '@/components/dashboard/hourly-chart'
+import { useEffect } from 'react'
 import { 
-  kpiData, 
-  ventasMensuales, 
-  productosVendidos, 
-  stockCritico,
-  pedidosRecientes,
-  ventasPorCategoria,
-  ventasPorHora
-} from '@/lib/mock-data'
+  getKpiData, 
+  getVentasMensuales, 
+  getProductosVendidos, 
+  getStockCritico, 
+  getPedidosRecientes, 
+  getVentasPorCategoria, 
+  getVentasPorHora 
+} from '@/app/actions/dashboard'
+import Link from 'next/link'
 
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState('month')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [data, setData] = useState<any>({
+    kpi: null, ventasMensuales: [], productosVendidos: [], stockCritico: [], 
+    pedidosRecientes: [], ventasPorCategoria: [], ventasPorHora: []
+  })
+
+  const loadData = async () => {
+    setIsRefreshing(true)
+    try {
+      const [kpi, vMensuales, pVendidos, sCritico, pRecientes, vCategoria, vHora] = await Promise.all([
+        getKpiData(),
+        getVentasMensuales(),
+        getProductosVendidos(),
+        getStockCritico(),
+        getPedidosRecientes(),
+        getVentasPorCategoria(),
+        getVentasPorHora()
+      ])
+      setData({
+        kpi, ventasMensuales: vMensuales, productosVendidos: pVendidos, 
+        stockCritico: sCritico, pedidosRecientes: pRecientes, 
+        ventasPorCategoria: vCategoria, ventasPorHora: vHora
+      })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsRefreshing(false)
+    await loadData()
+  }
+
+  if (!data.kpi && isRefreshing) {
+    return <div className="p-8 text-center text-muted-foreground animate-pulse">Cargando métricas de la tienda...</div>
   }
 
   return (
@@ -78,28 +114,31 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <KPICards data={kpiData} />
+      <KPICards data={data.kpi || {
+        ticketPromedio: 0, totalVentas: 0, totalPedidos: 0, 
+        clientesRegistrados: 0, tasaConversion: 0, productosConStockCritico: 0
+      }} />
 
       {/* Charts Row 1 */}
       <div className="grid gap-6 mt-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SalesChart data={ventasMensuales} />
+          <SalesChart data={data.ventasMensuales} />
         </div>
         <div>
-          <CategoryChart data={ventasPorCategoria} />
+          <CategoryChart data={data.ventasPorCategoria} />
         </div>
       </div>
 
       {/* Charts Row 2 */}
       <div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
-        <TopProducts data={productosVendidos} />
-        <CriticalStock data={stockCritico} />
-        <HourlyChart data={ventasPorHora} />
+        <TopProducts data={data.productosVendidos} />
+        <CriticalStock data={data.stockCritico} />
+        <HourlyChart data={data.ventasPorHora} />
       </div>
 
       {/* Recent Orders */}
       <div className="mt-6">
-        <RecentOrders data={pedidosRecientes} />
+        <RecentOrders data={data.pedidosRecientes} />
       </div>
     </div>
   )
