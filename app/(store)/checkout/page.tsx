@@ -21,6 +21,8 @@ import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/store-data'
 import { getRegiones } from '@/app/actions/location'
+import { createOrder } from '@/app/actions/orders'
+import { initWebpayTransaction } from '@/app/actions/webpay'
 import { useEffect } from 'react'
 
 export default function CheckoutPage() {
@@ -58,20 +60,63 @@ export default function CheckoutPage() {
     })
   }, [])
 
-  const shippingCost = total >= 50000 ? 0 : shippingMethod === 'express' ? 7990 : 4990
+  const shippingCost = shippingMethod === 'express' ? 7990 : (total >= 50000 ? 0 : 4990)
   const finalTotal = total + shippingCost
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const [checkoutError, setCheckoutError] = useState('')
+  const [webpayData, setWebpayData] = useState<{ url: string; token: string } | null>(null)
+
+  useEffect(() => {
+    if (webpayData) {
+      const form = document.getElementById('webpay-form') as HTMLFormElement
+      if (form) form.submit()
+    }
+  }, [webpayData])
+
   const handleSubmit = async () => {
     setIsProcessing(true)
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsProcessing(false)
-    setOrderComplete(true)
-    clearCart()
+    setCheckoutError('')
+    
+    const res = await createOrder({
+      userId: user?.id || null,
+      formData,
+      items,
+      total,
+      finalTotal,
+      paymentMethod
+    })
+
+    if (res.success && res.orderId) {
+      const wpRes = await initWebpayTransaction(res.orderId, finalTotal)
+      if (wpRes.success && wpRes.url && wpRes.token) {
+        setWebpayData({ url: wpRes.url, token: wpRes.token })
+        clearCart()
+      } else {
+        setCheckoutError(wpRes.error || 'Error al conectar con Webpay.')
+        setIsProcessing(false)
+      }
+    } else {
+      setCheckoutError(res.error || 'Ocurrió un error al procesar el pedido.')
+      setIsProcessing(false)
+    }
+  }
+
+  if (webpayData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
+        <span className="h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent mb-6" />
+        <h1 className="text-2xl font-bold mb-2">Redirigiendo a Webpay Plus...</h1>
+        <p className="text-muted-foreground">Por favor espera, no cierres esta ventana.</p>
+        
+        <form id="webpay-form" action={webpayData.url} method="POST" className="hidden">
+          <input type="hidden" name="token_ws" value={webpayData.token} />
+        </form>
+      </div>
+    )
   }
 
   if (items.length === 0 && !orderComplete) {
@@ -107,7 +152,7 @@ export default function CheckoutPage() {
             </Button>
             {isAuthenticated && (
               <Button variant="outline" asChild>
-                <Link href="/pedidos">Ver Mis Pedidos</Link>
+                <Link href="/perfil">Ver Mis Pedidos</Link>
               </Button>
             )}
           </div>
@@ -435,41 +480,14 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <div
-                      className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer ${
-                        paymentMethod === 'transfer' ? 'border-primary bg-primary/5' : ''
-                      }`}
-                      onClick={() => setPaymentMethod('transfer')}
-                    >
-                      <RadioGroupItem value="transfer" id="transfer" />
-                      <div>
-                        <Label htmlFor="transfer" className="cursor-pointer font-medium">
-                          Transferencia Bancaria
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Deposito o transferencia directa
-                        </p>
-                      </div>
-                    </div>
 
-                    <div
-                      className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer ${
-                        paymentMethod === 'mercadopago' ? 'border-primary bg-primary/5' : ''
-                      }`}
-                      onClick={() => setPaymentMethod('mercadopago')}
-                    >
-                      <RadioGroupItem value="mercadopago" id="mercadopago" />
-                      <div>
-                        <Label htmlFor="mercadopago" className="cursor-pointer font-medium">
-                          Mercado Pago
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Paga en cuotas sin interes
-                        </p>
-                      </div>
-                    </div>
                   </RadioGroup>
 
+                  {checkoutError && (
+                    <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
+                      {checkoutError}
+                    </div>
+                  )}
                   <div className="flex gap-3 pt-4">
                     <Button variant="outline" onClick={() => setStep(2)}>
                       Volver

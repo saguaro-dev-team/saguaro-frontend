@@ -18,7 +18,7 @@ export async function getKpiData(): Promise<KPIData> {
   const ticketPromedio = totalPedidos > 0 ? Math.round(totalVentas / totalPedidos) : 0;
   
   const clientes = await prisma.usuario.count({
-    where: { fk_rol: 1 } 
+    where: { id_rol: 1 } 
   });
   
   const criticos = await prisma.producto.count({
@@ -104,13 +104,45 @@ export async function getStockCritico(): Promise<StockCritico[]> {
     orderBy: { stock: 'asc' }
   });
 
-  return criticos.map(c => ({
-    id_producto: c.id_producto,
-    nombre: `${c.modelo.nombre_modelo} - ${c.talla.nombre_talla} ${c.color.nombre_color}`,
-    stock: c.stock,
-    velocidadVenta: 1.0,
-    diasRestantes: c.stock * 2 
-  }));
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const productIds = criticos.map(c => c.id_producto);
+
+  const sales = await prisma.articulo_pedido.findMany({
+    where: {
+      id_producto: { in: productIds },
+      pedido: {
+        fecha_pedido: { gte: thirtyDaysAgo },
+        estado: { not: 'cancelado' }
+      }
+    },
+    select: {
+      id_producto: true,
+      cantidad: true
+    }
+  });
+
+  const salesMap = new Map<number, number>();
+  sales.forEach(s => {
+    salesMap.set(s.id_producto, (salesMap.get(s.id_producto) || 0) + s.cantidad);
+  });
+
+  return criticos.map(c => {
+    const totalSold = salesMap.get(c.id_producto) || 0;
+    // Velocidad de venta diaria (ventas en 30 días / 30).
+    // Usamos un mínimo de 0.1 ventas/día si no hay ventas recientes, para evitar división por cero.
+    const velocidadVenta = Math.max(0.1, totalSold / 30);
+    const diasRestantes = c.stock / velocidadVenta;
+
+    return {
+      id_producto: c.id_producto,
+      nombre: `${c.modelo.nombre_modelo} - ${c.talla.nombre_talla} ${c.color.nombre_color}`,
+      stock: c.stock,
+      velocidadVenta,
+      diasRestantes
+    };
+  });
 }
 
 export async function getVentasPorCategoria() {
@@ -159,7 +191,7 @@ export async function getPedidosRecientes() {
     token_webpay: 'N/A',
     authorization_code: 'N/A',
     is_active: true,
-    cliente: `${p.usuario.nombre} ${p.usuario.apellido}`
+    cliente: `${p.usuario?.nombres || 'Cliente'} ${p.usuario?.primer_apellido || 'Anónimo'}`
   }));
 }
 
@@ -184,3 +216,17 @@ export async function getVentasPorHora() {
     ventas: map.get(h)!
   }));
 }
+
+export async function getOrderDetails(id_pedido: number) {
+  const pedido = await prisma.pedido.findUnique({
+    where: { id_pedido },
+    include: {
+      usuario: true,
+      direccion: { include: { comuna: { include: { region: true } } } },
+      articulos: { include: { producto: { include: { modelo: true, talla: true, color: true } } } },
+      pagos: true,
+    }
+  });
+  return pedido;
+}
+

@@ -69,3 +69,139 @@ export async function getUserOrders(userId: string) {
     return { success: false, error: 'No se pudieron cargar los pedidos' }
   }
 }
+
+export async function createOrder(data: {
+  userId?: string | null;
+  formData: any;
+  items: any[];
+  total: number;
+  finalTotal: number;
+  paymentMethod: string;
+}) {
+  try {
+    let user_id: number;
+    if (data.userId) {
+      user_id = parseInt(data.userId);
+    } else {
+      const existingUser = await prisma.usuario.findUnique({ where: { direccion_email: data.formData.email } });
+      if (existingUser) {
+        user_id = existingUser.id_usuario;
+      } else {
+        const newUser = await prisma.usuario.create({
+          data: {
+            nombres: data.formData.nombres,
+            primer_apellido: data.formData.primer_apellido,
+            segundo_apellido: data.formData.segundo_apellido || '',
+            rut: `G-${Date.now().toString().slice(-9)}`,
+            telefono: data.formData.telefono,
+            direccion_email: data.formData.email,
+            genero: 'No especificado',
+            fecha_nacimiento: new Date('1990-01-01'),
+          }
+        });
+        user_id = newUser.id_usuario;
+      }
+    }
+
+    let direccion = await prisma.direccion.findFirst({
+      where: {
+        id_usuario: user_id,
+        id_comuna: data.formData.id_comuna,
+        calle: data.formData.calle,
+        numero: data.formData.numero
+      }
+    });
+
+    if (!direccion) {
+      const lastDir = await prisma.direccion.findFirst({
+        where: { id_usuario: user_id, id_comuna: data.formData.id_comuna },
+        orderBy: { id_direccion: 'desc' }
+      });
+      const nextId = lastDir ? lastDir.id_direccion + 1 : 1;
+      
+      direccion = await prisma.direccion.create({
+        data: {
+          id_usuario: user_id,
+          id_comuna: data.formData.id_comuna,
+          id_direccion: nextId,
+          calle: data.formData.calle,
+          numero: data.formData.numero,
+          departamento: data.formData.departamento,
+        }
+      });
+    }
+
+    const newOrder = await prisma.$transaction(async (tx) => {
+      // 1. Create Pedido
+      const pedido = await tx.pedido.create({
+        data: {
+          id_usuario: user_id,
+          fk_usuario_direccion: direccion.id_usuario,
+          id_comuna_direccion: direccion.id_comuna,
+          fk_numero_correlativo_direccion: direccion.id_direccion,
+          total: data.finalTotal,
+          estado: "pendiente",
+        }
+      });
+
+      // 2. Add Articulos and Decrement Stock
+      for (const item of data.items) {
+        const idModelo = parseInt(item.producto.id.toString());
+        const qty = parseInt(item.cantidad.toString());
+        const price = parseFloat(item.producto.precio.toString());
+
+        // Find the specific variant based on modelo, color, and talla
+        const productoVariant = await tx.producto.findFirst({ 
+          where: { 
+            id_modelo: idModelo,
+            color: { nombre_color: item.color.toString() },
+            talla: { nombre_talla: item.talla.toString() }
+          } 
+        });
+
+        if (!productoVariant || productoVariant.stock < qty) {
+          throw new Error(`Stock insuficiente para ${item.producto.nombre} (Talla: ${item.talla}, Color: ${item.color})`);
+        }
+
+        await tx.articulo_pedido.create({
+          data: {
+            id_pedido: pedido.id_pedido,
+            id_producto: productoVariant.id_producto,
+            cantidad: qty,
+            precio: price,
+          }
+        });
+
+        await tx.producto.update({
+          where: { id_producto: productoVariant.id_producto },
+          data: { stock: productoVariant.stock - qty }
+        });
+      }
+
+      // 3. Create dummy Payment record
+      let metodo = await tx.metodo_pago.findFirst();
+      if (!metodo) {
+        metodo = await tx.metodo_pago.create({
+          data: { nombre: 'Webpay Plus', descripcion: 'Pago con tarjeta' }
+        });
+      }
+
+      await tx.transaccion_pago.create({
+        data: {
+          id_pedido: pedido.id_pedido,
+          id_metodo_pago: metodo.id_metodo_pago,
+          monto: data.finalTotal,
+          estado_pago: 'Pendiente de Pago',
+          cod_autorizacion: null
+        }
+      });
+
+      return pedido;
+    });
+
+    return { success: true, orderId: newOrder.id_pedido };
+  } catch (error: any) {
+    console.error('Error al crear pedido:', error);
+    return { success: false, error: error.message || 'Error al procesar el pedido' };
+  }
+}

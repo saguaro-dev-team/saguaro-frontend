@@ -11,7 +11,7 @@ export interface User {
 }
 
 export type ProductCategory = 'hombre' | 'mujer' | 'nino'
-export type ProductType = 'running' | 'casual' | 'trekking' | 'acuatico' | 'sandalias'
+export type ProductType = 'running' | 'casual' | 'trekking' | 'acuatico' | 'sandalias' | 'casuales' | 'deportivas' | 'botas'
 
 export interface ProductSize {
   talla: number
@@ -38,7 +38,7 @@ export interface Product {
   destacado: boolean
   nuevo: boolean
   descuento?: number
-  activo: boolean
+  activo?: boolean
 }
 
 export interface CartItem {

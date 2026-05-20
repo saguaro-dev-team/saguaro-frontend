@@ -55,6 +55,30 @@ export async function updateProductDescription(id: string, descripcion: string) 
   }
 }
 
+export async function getProductVariants(modelId: string) {
+  try {
+    const id_modelo = parseInt(modelId)
+    if (isNaN(id_modelo)) return { success: false, error: 'ID de modelo inválido' }
+
+    const variants = await prisma.producto.findMany({
+      where: { id_modelo },
+      include: {
+        color: true,
+        talla: true
+      },
+      orderBy: [
+        { color: { nombre_color: 'asc' } },
+        { talla: { nombre_talla: 'asc' } }
+      ]
+    })
+
+    return { success: true, variants }
+  } catch (error: any) {
+    console.error('Error al obtener variantes:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 export async function updateProductFull(id: string, data: any) {
   try {
     console.log(`[updateProductFull] Actualizando Modelo ID: ${id}`, data)
@@ -75,27 +99,33 @@ export async function updateProductFull(id: string, data: any) {
         uso: data.uso,
         estilo: data.estilo,
       }
-
-
     })
 
-    // 2. Actualizar variantes existentes (simplificado: actualizamos precio y stock de todas)
+    // 2. Actualizar precio de todas las variantes existentes
     await prisma.producto.updateMany({
       where: { id_modelo },
       data: {
         precio: precio,
-        // No actualizamos stock masivamente porque cada variante tiene el suyo,
-        // pero para mantener compatibilidad con el admin actual:
       }
     })
 
-    // Si el admin envió un stock específico y solo hay una variante, lo actualizamos
-    const variantsCount = await prisma.producto.count({ where: { id_modelo } })
-    if (variantsCount === 1) {
-      await prisma.producto.updateMany({
-        where: { id_modelo },
-        data: { stock }
-      })
+    // 3. Si se enviaron stocks por variante específicos, los actualizamos uno a uno
+    if (data.variantsStock && Array.isArray(data.variantsStock)) {
+      for (const v of data.variantsStock) {
+        await prisma.producto.update({
+          where: { id_producto: parseInt(v.id_producto) },
+          data: { stock: parseInt(v.stock) || 0 }
+        })
+      }
+    } else {
+      // Si el admin envió un stock específico y solo hay una variante, lo actualizamos (retrocompatibilidad)
+      const variantsCount = await prisma.producto.count({ where: { id_modelo } })
+      if (variantsCount === 1) {
+        await prisma.producto.updateMany({
+          where: { id_modelo },
+          data: { stock }
+        })
+      }
     }
     
     revalidatePath('/')
@@ -283,6 +313,21 @@ export async function updateUserRole(id: number, nuevoRol: string) {
   } catch (error: any) {
     console.error("Error actualizando rol:", error)
     return { success: false, error: error.message }
+  }
+}
+
+export async function addStockToProduct(id_producto: number, amount: number) {
+  try {
+    const updated = await prisma.producto.update({
+      where: { id_producto },
+      data: { stock: { increment: amount } }
+    });
+    revalidatePath('/admin');
+    revalidatePath('/admin/productos');
+    return { success: true, stock: updated.stock };
+  } catch (error: any) {
+    console.error('Error adding stock:', error);
+    return { success: false, error: error.message };
   }
 }
 

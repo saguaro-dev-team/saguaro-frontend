@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useMemo } from 'react'
+import { use, useState, useMemo, Suspense, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Filter, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ProductCard } from '@/components/store/product-card'
-import { useEffect } from 'react'
 import { getProductsByCategoryStr } from '@/app/actions/products'
 import { getColorValue } from '@/lib/color-utils'
 import type { Product, ProductCategory, ProductType } from '@/lib/store-types'
@@ -42,9 +41,12 @@ const categoryDescriptions: Record<string, string> = {
 const productTypes: { value: ProductType; label: string }[] = [
   { value: 'running', label: 'Running' },
   { value: 'casual', label: 'Casual' },
+  { value: 'casuales', label: 'Casuales' },
+  { value: 'deportivas', label: 'Deportivas' },
   { value: 'trekking', label: 'Trekking' },
   { value: 'acuatico', label: 'Acuatico' },
   { value: 'sandalias', label: 'Sandalias' },
+  { value: 'botas', label: 'Botas' },
 ]
 
 const sortOptions = [
@@ -58,8 +60,7 @@ interface PageProps {
   params: Promise<{ categoria: string }>
 }
 
-export default function CategoryPage({ params }: PageProps) {
-  const { categoria } = use(params)
+function CategoryContent({ categoria }: { categoria: string }) {
   const searchParams = useSearchParams()
   
   const [dbProducts, setDbProducts] = useState<Product[]>([])
@@ -156,7 +157,19 @@ export default function CategoryPage({ params }: PageProps) {
     }
 
     return filtered
-  }, [dbProducts, categoria, selectedTypes, sortBy, showOnlyNew, showOnlyDiscount])
+  }, [
+    dbProducts,
+    categoria,
+    selectedTypes,
+    sortBy,
+    showOnlyNew,
+    showOnlyDiscount,
+    selectedGeneros,
+    selectedUsos,
+    selectedEstilos,
+    selectedColors,
+    selectedSizes,
+  ])
 
   const toggleType = (type: ProductType) => {
     setSelectedTypes((prev) =>
@@ -224,15 +237,17 @@ export default function CategoryPage({ params }: PageProps) {
     return Array.from(estilos).sort()
   }, [dbProducts])
 
-  const hasActiveFilters = 
-    selectedTypes.length > 0 || 
-    showOnlyNew || 
-    showOnlyDiscount || 
-    selectedGeneros.length > 0 ||
-    selectedUsos.length > 0 ||
-    selectedEstilos.length > 0 ||
-    selectedColors.length > 0 ||
-    selectedSizes.length > 0
+  const activeFiltersCount = 
+    selectedTypes.length + 
+    (showOnlyNew ? 1 : 0) + 
+    (showOnlyDiscount ? 1 : 0) + 
+    selectedGeneros.length +
+    selectedUsos.length +
+    selectedEstilos.length +
+    selectedColors.length +
+    selectedSizes.length
+
+  const hasActiveFilters = activeFiltersCount > 0
 
   const FilterContent = () => (
     <div className="space-y-8">
@@ -463,7 +478,7 @@ export default function CategoryPage({ params }: PageProps) {
                       Filtros
                       {hasActiveFilters && (
                         <Badge variant="secondary" className="ml-2">
-                          {selectedTypes.length + (showOnlyNew ? 1 : 0) + (showOnlyDiscount ? 1 : 0)}
+                          {activeFiltersCount}
                         </Badge>
                       )}
                     </Button>
@@ -513,6 +528,61 @@ export default function CategoryPage({ params }: PageProps) {
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2 mb-6">
                 <span className="text-sm text-muted-foreground">Filtros activos:</span>
+                {selectedGeneros.map((g) => (
+                  <Badge
+                    key={`g-${g}`}
+                    variant="secondary"
+                    className="cursor-pointer capitalize"
+                    onClick={() => toggleFilter(selectedGeneros, setSelectedGeneros, g)}
+                  >
+                    {`Género: ${g}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                ))}
+                {selectedUsos.map((u) => (
+                  <Badge
+                    key={`u-${u}`}
+                    variant="secondary"
+                    className="cursor-pointer capitalize"
+                    onClick={() => toggleFilter(selectedUsos, setSelectedUsos, u)}
+                  >
+                    {`Uso: ${u}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                ))}
+                {selectedSizes.map((s) => (
+                  <Badge
+                    key={`s-${s}`}
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => toggleSize(s)}
+                  >
+                    {`Talla: ${s}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                ))}
+                {selectedColors.map((c) => (
+                  <Badge
+                    key={`c-${c}`}
+                    variant="secondary"
+                    className="cursor-pointer capitalize"
+                    onClick={() => toggleFilter(selectedColors, setSelectedColors, c)}
+                  >
+                    {`Color: ${c}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                ))}
+                {selectedEstilos.map((e) => (
+                  <Badge
+                    key={`e-${e}`}
+                    variant="secondary"
+                    className="cursor-pointer capitalize"
+                    onClick={() => toggleFilter(selectedEstilos, setSelectedEstilos, e)}
+                  >
+                    {`Estilo: ${e}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                ))}
                 {selectedTypes.map((type) => (
                   <Badge
                     key={type}
@@ -560,7 +630,7 @@ export default function CategoryPage({ params }: PageProps) {
             ) : categoryProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
                 {categoryProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} selectedColors={selectedColors} />
                 ))}
               </div>
             ) : (
@@ -579,3 +649,14 @@ export default function CategoryPage({ params }: PageProps) {
     </div>
   )
 }
+
+export default function CategoryPage({ params }: PageProps) {
+  const { categoria } = use(params)
+  
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Cargando categoría...</div>}>
+      <CategoryContent categoria={categoria} />
+    </Suspense>
+  )
+}
+

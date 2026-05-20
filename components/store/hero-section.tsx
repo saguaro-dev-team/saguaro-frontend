@@ -32,7 +32,7 @@ export function HeroSection() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 lg:py-32 w-full">
         <div className="max-w-3xl animate-in slide-in-from-bottom-8 fade-in duration-1000 fill-mode-both">
           <span className="inline-block rounded-full bg-primary/20 border border-primary/50 px-4 py-1.5 text-sm font-medium text-primary mb-6 shadow-[0_0_15px_rgba(27,123,78,0.4)] backdrop-blur-md">
-            ✨ Nueva Colección 2024
+            ✨ Nueva Colección 2026
           </span>
           <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl md:text-7xl lg:text-8xl text-balance drop-shadow-lg">
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400 pb-2">Camina Natural</span>

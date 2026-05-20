@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, MoreHorizontal, Package, Check, X, Tag, DollarSign, Box } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, MoreHorizontal, Package, Check, X, Tag, DollarSign, Box, Minus, ArrowUp, ArrowDown, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -46,7 +47,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatPrice } from '@/lib/store-data'
 import { getColorValue } from '@/lib/color-utils'
 import { getAllProducts } from '@/app/actions/products'
-import { createProduct, updateProductFull, toggleProductStatus } from '@/app/actions/admin'
+import { createProduct, updateProductFull, toggleProductStatus, getProductVariants } from '@/app/actions/admin'
 import { getColores } from '@/app/actions/location'
 import type { Product } from '@/lib/store-types'
 
@@ -62,6 +63,8 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [allColors, setAllColors] = useState<any[]>([])
+  const [variantsStock, setVariantsStock] = useState<any[]>([])
+  const [loadingVariants, setLoadingVariants] = useState(false)
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
@@ -87,6 +90,15 @@ export default function AdminProductsPage() {
     is_recomendado: false,
     caracteristicas: ''
   })
+
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (isEditing && variantsStock.length > 0) {
+      const totalStock = variantsStock.reduce((acc, v) => acc + (v.stock || 0), 0)
+      setFormData(prev => ({ ...prev, stock: String(totalStock) }))
+    }
+  }, [variantsStock, isEditing])
 
   const loadProducts = () => {
     setLoading(true)
@@ -114,6 +126,7 @@ export default function AdminProductsPage() {
   const handleAddClick = () => {
     setIsEditing(false)
     setSelectedProductId(null)
+    setVariantsStock([])
     setFormData({
       nombre: '',
       id_categoria: '1',
@@ -137,6 +150,8 @@ export default function AdminProductsPage() {
   const handleEditClick = (product: Product) => {
     setIsEditing(true)
     setSelectedProductId(product.id)
+    setVariantsStock([])
+    setLoadingVariants(true)
     
     // Mapear categoría de string a ID (esto depende de cómo estén en tu DB, usualmente Hombre=1, Mujer=2, Niños=3)
     let catId = '1'
@@ -160,6 +175,17 @@ export default function AdminProductsPage() {
       is_recomendado: product.destacado || false,
       caracteristicas: product.caracteristicas.join('\n')
     })
+    
+    getProductVariants(product.id).then(res => {
+      if (res.success && res.variants) {
+        setVariantsStock(res.variants.map((v: any) => ({ ...v, originalStock: v.stock })))
+      }
+      setLoadingVariants(false)
+    }).catch(err => {
+      console.error(err)
+      setLoadingVariants(false)
+    })
+
     setModalOpen(true)
   }
 
@@ -170,7 +196,8 @@ export default function AdminProductsPage() {
     const dataToSend = {
       ...formData,
       caracteristicas: caracteristicasArray,
-      id_categoria: parseInt(formData.id_categoria)
+      id_categoria: parseInt(formData.id_categoria),
+      variantsStock: isEditing ? variantsStock.map(v => ({ id_producto: v.id_producto, stock: v.stock })) : undefined
     }
 
     let res
@@ -183,8 +210,38 @@ export default function AdminProductsPage() {
     if (res.success) {
       setModalOpen(false)
       loadProducts()
+      
+      let changedCount = 0
+      let addedUnits = 0
+      let removedUnits = 0
+      variantsStock.forEach(v => {
+        const diff = v.stock - v.originalStock
+        if (diff !== 0) {
+          changedCount++
+          if (diff > 0) addedUnits += diff
+          else removedUnits += Math.abs(diff)
+        }
+      })
+
+      let changeSummary = ""
+      if (changedCount > 0) {
+        const parts = []
+        if (addedUnits > 0) parts.push(`+${addedUnits} un.`)
+        if (removedUnits > 0) parts.push(`-${removedUnits} un.`)
+        changeSummary = ` (Se actualizaron ${changedCount} variantes: ${parts.join(', ')})`
+      }
+
+      toast({
+        title: "¡Producto guardado exitosamente!",
+        description: `El stock total del producto ahora es de ${formData.stock} unidades${changeSummary}.`,
+        duration: 5000,
+      })
     } else {
-      alert("Error al guardar: " + res.error)
+      toast({
+        title: "Error al guardar",
+        description: res.error,
+        variant: "destructive"
+      })
     }
     setIsSaving(false)
   }
@@ -211,25 +268,25 @@ export default function AdminProductsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Productos</CardTitle>
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.reduce((acc, p) => acc + Math.max(1, p.colores.length), 0)}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Hombre</CardTitle>
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'hombre').length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'hombre').reduce((acc, p) => acc + Math.max(1, p.colores.length), 0)}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Mujer</CardTitle>
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'mujer').length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'mujer').reduce((acc, p) => acc + Math.max(1, p.colores.length), 0)}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Niños</CardTitle>
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'nino').length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{loading ? '...' : dbProducts.filter(p => p.categoria === 'nino').reduce((acc, p) => acc + Math.max(1, p.colores.length), 0)}</div></CardContent>
         </Card>
       </div>
 
@@ -265,7 +322,7 @@ export default function AdminProductsPage() {
                 <TableHead>Categoría</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Precio</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Stock Total</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
@@ -338,7 +395,7 @@ export default function AdminProductsPage() {
       </Card>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl xl:max-w-[90vw] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
           <DialogHeader className="p-6 bg-muted/30 border-b">
             <DialogTitle className="text-2xl font-bold">
               {isEditing ? 'Editar Detalles del Producto' : 'Agregar Nuevo Producto'}
@@ -415,11 +472,20 @@ export default function AdminProductsPage() {
                   <label className="text-sm font-medium flex items-center gap-2 text-blue-600">
                     <Box className="h-4 w-4" /> Stock Total
                   </label>
-                  <Input 
-                    type="number" 
-                    value={formData.stock} 
-                    onChange={e => setFormData({...formData, stock: e.target.value})} 
-                  />
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      value={formData.stock} 
+                      onChange={e => setFormData({...formData, stock: e.target.value})} 
+                      disabled={isEditing}
+                      className={isEditing ? "bg-muted/50 font-extrabold text-muted-foreground cursor-not-allowed border-dashed pl-3 pr-36" : "font-extrabold"}
+                    />
+                    {isEditing && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">
+                        Calculado de variantes
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -608,6 +674,228 @@ export default function AdminProductsPage() {
                 </div>
               </div>
             </div>
+
+            {isEditing && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                      <Box className="h-5 w-5 text-primary" /> Inventario por Variante
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Gestiona el stock individual para cada combinación de color y talla de este modelo.
+                    </p>
+                  </div>
+                  {variantsStock.some(v => v.stock !== v.originalStock) && (
+                    <Badge className="bg-amber-500 animate-pulse text-white hover:bg-amber-600 self-start sm:self-center font-bold tracking-wide">
+                      Cambios sin guardar
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Banner Resumen de Cambios Pendientes */}
+                {variantsStock.some(v => v.stock !== v.originalStock) && (
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 bg-amber-500/10 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-700 shrink-0">
+                        <Package className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-amber-900">Tienes cambios de inventario pendientes</h4>
+                        <p className="text-xs text-amber-800/80 mt-0.5">
+                          Has ajustado {variantsStock.filter(v => v.stock !== v.originalStock).length} variantes de este producto.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                      <Badge variant="outline" className="bg-background border-amber-300 font-extrabold text-xs py-1 px-3 shadow-inner text-amber-900 shrink-0">
+                        {(() => {
+                          let added = 0
+                          let removed = 0
+                          variantsStock.forEach(v => {
+                            const diff = v.stock - v.originalStock
+                            if (diff > 0) added += diff
+                            else if (diff < 0) removed += Math.abs(diff)
+                          })
+                          const parts = []
+                          if (added > 0) parts.push(`+${added}`)
+                          if (removed > 0) parts.push(`-${removed}`)
+                          return `Balance: ${parts.join(', ') || '0'} un.`
+                        })()}
+                      </Badge>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => {
+                          setVariantsStock(prev => prev.map(v => ({ ...v, stock: v.originalStock })))
+                        }}
+                        className="text-xs text-amber-900 hover:bg-amber-500/20 hover:text-amber-950 font-bold flex items-center gap-1 shrink-0 px-2.5 h-8 border border-amber-500/20 rounded-lg bg-background/50"
+                      >
+                        <Undo2 className="h-3 w-3" /> Revertir todo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {loadingVariants ? (
+                  <div className="py-12 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-3 bg-muted/5 rounded-xl border border-dashed">
+                    <span className="h-9 w-9 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+                    <span className="font-semibold text-foreground">Cargando inventario detallado desde la base de datos...</span>
+                  </div>
+                ) : variantsStock.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground bg-muted/5">
+                    No se encontraron variantes activas en la base de datos para este producto.
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {Object.entries(
+                      variantsStock.reduce((acc: any, v: any) => {
+                        const colorName = v.color?.nombre_color || 'Estándar'
+                        if (!acc[colorName]) acc[colorName] = []
+                        acc[colorName].push(v)
+                        return acc
+                      }, {})
+                    ).map(([colorName, variants]: [string, any]) => (
+                      <div key={colorName} className="rounded-2xl border bg-background overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                        {/* Cabecera del Color */}
+                        <div className="flex items-center justify-between bg-muted/30 px-5 py-4 border-b">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="h-5 w-5 rounded-full border border-black/10 shadow-inner"
+                              style={{ backgroundColor: variants[0]?.color?.codigo_hex || '#cccccc' }}
+                            />
+                            <span className="font-extrabold text-sm text-foreground tracking-tight">{colorName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px] font-bold py-0.5 px-2 bg-primary/5 text-primary border border-primary/10">
+                              Stock Total: {variants.reduce((acc: number, v: any) => acc + v.stock, 0)} un.
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] font-semibold py-0.5 px-2">
+                              {variants.length} Tallas
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {/* Grid de Tallas (Cards en lugar de Tabla) */}
+                        <div className="p-5 lg:p-8 bg-muted/5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                            {variants
+                              .sort((a: any, b: any) => {
+                                const tA = parseInt(a.talla?.nombre_talla) || 0
+                                const tB = parseInt(b.talla?.nombre_talla) || 0
+                                return tA - tB
+                              })
+                              .map((v: any) => {
+                                const difference = v.stock - v.originalStock
+                                const isModified = difference !== 0
+                                
+                                // Determinar estado de stock actual
+                                let stockBadge = (
+                                  <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200/50 text-[10px] font-bold py-0.5 w-full justify-center">
+                                    Disponible ({v.stock})
+                                  </Badge>
+                                )
+                                if (v.stock === 0) {
+                                  stockBadge = (
+                                    <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200/50 text-[10px] font-bold py-0.5 w-full justify-center">
+                                      Agotado
+                                    </Badge>
+                                  )
+                                } else if (v.stock < 5) {
+                                  stockBadge = (
+                                    <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/50 text-[10px] font-bold py-0.5 w-full justify-center">
+                                      Bajo Stock ({v.stock})
+                                    </Badge>
+                                  )
+                                }
+
+                                return (
+                                  <div 
+                                    key={v.id_producto} 
+                                    className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all duration-200 ${
+                                      isModified 
+                                        ? 'border-amber-500 bg-amber-500/[0.04] shadow-sm shadow-amber-500/5 ring-1 ring-amber-500/20' 
+                                        : 'border-border bg-card hover:border-muted-foreground/20 hover:shadow-sm'
+                                    }`}
+                                  >
+                                    {/* Info superior */}
+                                    <div className="flex items-center justify-between mb-4 w-full">
+                                      <span className="font-extrabold text-base lg:text-lg tracking-tight text-foreground">
+                                        Talla {v.talla?.nombre_talla}
+                                      </span>
+                                      {isModified && (
+                                        <span className={`text-[10px] lg:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border shadow-sm ${
+                                          difference > 0 
+                                            ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
+                                            : 'bg-rose-500/10 text-rose-700 border-rose-500/20'
+                                        }`}>
+                                          {difference > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                          {difference > 0 ? `+${difference}` : difference}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Estado actual */}
+                                    <div className="mb-5">
+                                      {stockBadge}
+                                    </div>
+
+                                    {/* Stepper de Control */}
+                                    <div className="flex items-center justify-between border rounded-lg overflow-hidden bg-background shadow-inner h-10 lg:h-12 mt-auto focus-within:ring-2 focus-within:ring-primary/20 transition-all w-full">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          const nextVal = Math.max(0, v.stock - 1)
+                                          setVariantsStock(prev => prev.map(item => item.id_producto === v.id_producto ? { ...item, stock: nextVal } : item))
+                                        }}
+                                        className="h-10 w-10 lg:h-12 lg:w-12 hover:bg-muted active:scale-90 transition-transform duration-75 rounded-none border-r shrink-0"
+                                      >
+                                        <Minus className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+                                      </Button>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        value={v.stock}
+                                        onChange={(e) => {
+                                          const parsed = parseInt(e.target.value) || 0
+                                          setVariantsStock(prev => prev.map(item => item.id_producto === v.id_producto ? { ...item, stock: Math.max(0, parsed) } : item))
+                                        }}
+                                        className={`h-10 lg:h-12 w-full min-w-[40px] text-center border-0 font-extrabold text-sm lg:text-base focus-visible:ring-0 focus-visible:ring-offset-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all ${
+                                          isModified 
+                                            ? difference > 0 
+                                              ? 'text-emerald-600 bg-emerald-500/5' 
+                                              : 'text-rose-600 bg-rose-500/5' 
+                                            : 'text-foreground'
+                                        }`}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          const nextVal = v.stock + 1
+                                          setVariantsStock(prev => prev.map(item => item.id_producto === v.id_producto ? { ...item, stock: nextVal } : item))
+                                        }}
+                                        className="h-10 w-10 lg:h-12 lg:w-12 hover:bg-muted active:scale-90 transition-transform duration-75 rounded-none border-l shrink-0"
+                                      >
+                                        <Plus className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Sección: Características */}
             <div className="space-y-4">

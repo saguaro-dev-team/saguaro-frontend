@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ShoppingBag, Heart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -11,17 +12,59 @@ import { getColorValue } from '@/lib/color-utils'
 
 interface ProductCardProps {
   product: Product
+  selectedColors?: string[]
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, selectedColors }: ProductCardProps) {
   const hasDiscount = product.descuento && product.precioOriginal
 
+  // Local state to keep track of the currently selected color for displaying the image
+  const [activeColor, setActiveColor] = useState<string | null>(null)
+
+  // Determine the default color to display:
+  // 1. If there's an active color filter that the product supports, use it.
+  // 2. Otherwise, use the first color of the product.
+  const getFilterMatchedColor = (colorsFilter?: string[]) => {
+    if (colorsFilter && colorsFilter.length > 0) {
+      const matched = product.colores.find(color => 
+        colorsFilter.includes(color.toLowerCase().trim())
+      )
+      if (matched) return matched
+    }
+    return product.colores[0] || null
+  }
+
+  // Update activeColor when selectedColors filter changes
+  useEffect(() => {
+    const matched = getFilterMatchedColor(selectedColors)
+    setActiveColor(matched)
+  }, [selectedColors, product.colores])
+
+  // Get active image to render based on selected color
+  const getProductImage = () => {
+    if (activeColor && product.imagenesPorColor) {
+      const activeColorLower = activeColor.toLowerCase().trim()
+      const matchingKey = Object.keys(product.imagenesPorColor).find(
+        key => key.toLowerCase().trim() === activeColorLower
+      )
+      if (matchingKey) {
+        const imagesForColor = product.imagenesPorColor[matchingKey]
+        if (imagesForColor && imagesForColor.length > 0) {
+          return imagesForColor[0]
+        }
+      }
+    }
+    return (product.imagenes && product.imagenes[0]) || '/placeholder.jpg'
+  }
+
+  const activeImage = getProductImage()
+
   return (
-    <Card className="group overflow-hidden border-0 shadow-none bg-transparent">
+    <Card className="group border-0 shadow-none bg-transparent">
       <Link href={`/producto/${product.id}`}>
         <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-          {product.imagenes && product.imagenes[0] && product.imagenes[0] !== '/placeholder.jpg' ? (
-            <img src={product.imagenes[0]} alt={product.nombre} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          {activeImage && activeImage !== '/placeholder.jpg' ? (
+            <img src={activeImage} alt={product.nombre} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/30" />
@@ -80,20 +123,32 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Color options */}
         {product.colores.length > 1 && (
-          <div className="mt-2 flex gap-1">
-            {product.colores.slice(0, 4).map((color) => (
-              <div
-                key={color}
-                className="h-4 w-4 rounded-full border border-border"
-                style={{
-                  backgroundColor: getColorValue(color)
-                }}
-                title={color}
-              />
-            ))}
-            {product.colores.length > 4 && (
-              <span className="text-xs text-muted-foreground">
-                +{product.colores.length - 4}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {product.colores.slice(0, 6).map((color) => {
+              const isActive = activeColor === color
+              return (
+                <button
+                  key={color}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setActiveColor(color)
+                  }}
+                  className={`h-4.5 w-4.5 rounded-full border transition-all duration-200 ${
+                    isActive 
+                      ? 'ring-2 ring-primary ring-offset-1 scale-110 border-transparent' 
+                      : 'border-border hover:scale-110'
+                  }`}
+                  style={{
+                    backgroundColor: getColorValue(color)
+                  }}
+                  title={color}
+                />
+              )
+            })}
+            {product.colores.length > 6 && (
+              <span className="text-[10px] font-semibold text-muted-foreground ml-1">
+                +{product.colores.length - 6}
               </span>
             )}
           </div>

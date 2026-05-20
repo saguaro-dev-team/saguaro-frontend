@@ -70,7 +70,19 @@
       "/zapatillas/Hombre/Casuales/Stitch 1/negro/6.jpg"
     ]
   },
-  "Terra 1": {},
+  "Terra 1": {
+    "Marron": [
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/1.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/2.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/3.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/4.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/5.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/6.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/7.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/8.jpg",
+      "/zapatillas/Hombre/Casuales/Terra 1/marron/9.jpg"
+    ]
+  },
   "Active 1": {
     "Gris": [
       "/zapatillas/Hombre/Deportivas/Active 1/gris/1.jpg",
