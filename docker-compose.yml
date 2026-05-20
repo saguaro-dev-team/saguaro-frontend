@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  web:
+    # Le dice a Docker que construya la imagen usando nuestro Dockerfile en esta misma carpeta (.)
+    build: .
+    # Mapea el puerto 3000 de tu computadora al puerto 3000 del contenedor
+    ports:
+      - "3000:3000"
+    # Le pasa el archivo .env al contenedor para que pueda conectarse a Supabase
+    env_file:
+      - .env
+    # Reinicia la app automáticamente si se cae por algún error
+    restart: unless-stopped
