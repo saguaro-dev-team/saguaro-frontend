@@ -302,23 +302,32 @@ export async function getVentasPorHora(period: Period = 'month') {
     where: { 
       estado: { not: 'cancelado' },
       fecha_pedido: { gte: dateFrom }
-    }
+    },
+    select: { fecha_pedido: true }
   })
 
-  const hours = Array.from({length: 14}, (_, i) => i + 8) // 8 to 21
+  // Chile está en UTC-4 (horario estándar) o UTC-3 (horario de verano).
+  // Usamos UTC-4 como offset fijo para convertir la hora UTC almacenada en BD.
+  const CHILE_OFFSET_HOURS = -4
+
+  // Mostrar las 24 horas para no perder ninguna compra fuera de rango
+  const allHours = Array.from({ length: 24 }, (_, i) => i)
   const map = new Map<number, number>()
-  hours.forEach(h => map.set(h, 0))
+  allHours.forEach(h => map.set(h, 0))
 
   pedidos.forEach(p => {
-    const h = p.fecha_pedido.getHours()
-    if (map.has(h)) {
-      map.set(h, map.get(h)! + 1)
-    }
+    // Convertir UTC a hora local de Chile
+    const utcHour = p.fecha_pedido.getUTCHours()
+    let localHour = (utcHour + CHILE_OFFSET_HOURS + 24) % 24
+    map.set(localHour, (map.get(localHour) || 0) + 1)
   })
 
-  return hours.map(h => ({
+  // Mostrar solo el rango de horas que tiene datos, o el rango comercial 7-23
+  const relevantHours = allHours.filter(h => h >= 7 && h <= 23)
+
+  return relevantHours.map(h => ({
     hora: `${h.toString().padStart(2, '0')}:00`,
-    ventas: map.get(h)!
+    ventas: map.get(h) || 0
   }))
 }
 

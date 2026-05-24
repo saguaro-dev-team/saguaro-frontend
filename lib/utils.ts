@@ -38,7 +38,9 @@ export function validateRut(rut: string): boolean {
   if (!rut) return false;
   // Limpiar puntos y guion, dejando solo dígitos y k/K
   const clean = rut.replace(/[^0-9kK]/g, '');
-  if (clean.length < 8 || clean.length > 9) return false;
+  // RUTs chilenos válidos: mínimo 7 chars (ej: "1234567-K" → "1234567K")
+  // máximo 9 chars (ej: "12.345.678-9" → "123456789")
+  if (clean.length < 7 || clean.length > 9) return false;
   
   const body = clean.slice(0, -1);
   const dv = clean.slice(-1).toUpperCase();
