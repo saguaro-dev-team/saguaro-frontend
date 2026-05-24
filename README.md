@@ -1,4 +1,4 @@
-# Saguaro Barefoot - Tienda Online de Calzado Respetuoso 👟
+# Saguaro Barefoot - Tienda Online de Calzado Respetuoso
 
 Saguaro Barefoot es una aplicación web e-commerce de calzado ergonómico y minimalista desarrollada sobre **Next.js (App Router)** utilizando **Prisma ORM** para la base de datos PostgreSQL hospedada en la nube de **Supabase**, y estilizada con **CSS Vanilla** y componentes accesibles de Radix UI.
 
