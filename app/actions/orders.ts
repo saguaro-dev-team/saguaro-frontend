@@ -205,3 +205,47 @@ export async function createOrder(data: {
     return { success: false, error: error.message || 'Error al procesar el pedido' };
   }
 }
+
+export async function getAdminOrders() {
+  try {
+    const orders = await prisma.pedido.findMany({
+      include: {
+        usuario: true,
+        articulos: true
+      },
+      orderBy: { fecha_pedido: 'desc' }
+    })
+    
+    const formattedOrders = orders.map(o => ({
+      id: `SAG-${String(o.id_pedido).padStart(8, '0')}`,
+      id_raw: o.id_pedido,
+      cliente: o.usuario ? `${o.usuario.nombres} ${o.usuario.primer_apellido}` : 'Invitado',
+      email: o.usuario ? o.usuario.direccion_email : 'invitado@email.com',
+      fecha: o.fecha_pedido.toISOString().split('T')[0],
+      total: o.total,
+      items: o.articulos.reduce((acc, a) => acc + a.cantidad, 0),
+      estado: o.estado
+    }))
+    
+    return { success: true, orders: formattedOrders }
+  } catch (error: any) {
+    console.error('Error al obtener pedidos para admin:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function updateOrderStatus(orderId: number, newStatus: string) {
+  try {
+    await prisma.pedido.update({
+      where: { id_pedido: orderId },
+      data: { estado: newStatus }
+    })
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/admin/pedidos')
+    revalidatePath('/perfil')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error al actualizar estado del pedido:', error)
+    return { success: false, error: error.message }
+  }
+}

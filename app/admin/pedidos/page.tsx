@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Eye, MoreHorizontal, Package, Truck, CheckCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getAdminOrders, updateOrderStatus } from '@/app/actions/orders'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -89,6 +90,7 @@ const mockOrders = [
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
   pendiente: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  pagado: { label: 'Pagado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
   preparando: { label: 'Preparando', color: 'bg-blue-100 text-blue-800', icon: Package },
   enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-800', icon: Truck },
   entregado: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
@@ -96,10 +98,34 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.C
 }
 
 export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const fetchOrders = () => {
+    getAdminOrders().then(res => {
+      if (res.success && res.orders) {
+        setOrders(res.orders)
+      }
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const handleStatusChange = async (orderIdRaw: number, newStatus: string) => {
+    const res = await updateOrderStatus(orderIdRaw, newStatus)
+    if (res.success) {
+      setOrders(current =>
+        current.map(o => o.id_raw === orderIdRaw ? { ...o, estado: newStatus } : o)
+      )
+    }
+  }
+
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.cliente.toLowerCase().includes(searchQuery.toLowerCase())
@@ -117,10 +143,10 @@ export default function AdminOrdersPage() {
 
   const getOrderStats = () => {
     return {
-      total: mockOrders.length,
-      pendiente: mockOrders.filter((o) => o.estado === 'pendiente').length,
-      preparando: mockOrders.filter((o) => o.estado === 'preparando').length,
-      enviado: mockOrders.filter((o) => o.estado === 'enviado').length,
+      total: orders.length,
+      pendiente: orders.filter((o) => o.estado === 'pendiente').length,
+      preparando: orders.filter((o) => o.estado === 'preparando').length,
+      enviado: orders.filter((o) => o.estado === 'enviado').length,
     }
   }
 
@@ -230,68 +256,88 @@ export default function AdminOrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => {
-                const status = statusConfig[order.estado]
-                const StatusIcon = status.icon
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Cargando pedidos...
+                  </TableCell>
+                </TableRow>
+              ) : filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No se encontraron pedidos.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOrders.map((order) => {
+                  const status = statusConfig[order.estado] || {
+                    label: order.estado ? order.estado.charAt(0).toUpperCase() + order.estado.slice(1) : 'Pendiente',
+                    color: 'bg-gray-100 text-gray-800',
+                    icon: Clock
+                  }
+                  const StatusIcon = status.icon
 
-                return (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <p className="font-mono font-medium">{order.id}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{order.cliente}</p>
-                        <p className="text-sm text-muted-foreground">{order.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(order.fecha).toLocaleDateString('es-CL')}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatPrice(order.total)}
-                    </TableCell>
-                    <TableCell className="text-center">{order.items}</TableCell>
-                    <TableCell>
-                      <Badge className={`${status.color} gap-1`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {status.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Acciones</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver detalles
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>Marcar como Preparando</DropdownMenuItem>
-                          <DropdownMenuItem>Marcar como Enviado</DropdownMenuItem>
-                          <DropdownMenuItem>Marcar como Entregado</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            Cancelar pedido
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <p className="font-mono font-medium">{order.id}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{order.cliente}</p>
+                          <p className="text-sm text-muted-foreground">{order.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(order.fecha).toLocaleDateString('es-CL')}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatPrice(order.total)}
+                      </TableCell>
+                      <TableCell className="text-center">{order.items}</TableCell>
+                      <TableCell>
+                        <Badge className={`${status.color} gap-1`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Acciones</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver detalles
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pendiente')}>Marcar como Pendiente</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pagado')}>Marcar como Pagado</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'preparando')}>Marcar como Preparando</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'enviado')}>Marcar como Enviado</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'entregado')}>Marcar como Entregado</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleStatusChange(order.id_raw, 'cancelado')}>
+                              Cancelar pedido
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       <div className="mt-4 text-sm text-muted-foreground">
-        Mostrando {filteredOrders.length} de {mockOrders.length} pedidos
+        Mostrando {filteredOrders.length} de {orders.length} pedidos
       </div>
     </div>
   )
