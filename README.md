@@ -13,36 +13,6 @@ Para garantizar que el proyecto funcione perfectamente tanto en el entorno de de
 
 ---
 
-## Características de Seguridad, UX e Integridad Implementadas
-
-Hemos implementado un conjunto robusto de características avanzadas de experiencia de usuario (UX), seguridad e integridad de datos:
-
-1. **Compra Exclusiva para Usuarios Registrados**:
-   - Bloqueo automático del acceso de invitados al flujo de checkout.
-   - Redirección con memoria dinámica (`?redirect=/checkout`) para que el usuario complete su compra de forma inmediata tras iniciar sesión o registrarse.
-   - Banners informativos premium en los formularios de login y registro que explican de forma amigable el motivo de la redirección.
-
-2. **Fricción Cero en Checkout (Autocompletado)**:
-   - Carga y autocompletado en tiempo de montaje de los datos personales (nombres, apellidos, teléfono) y dirección principal (calle, número, departamento, comuna, región) del usuario logueado.
-   - Validación exhaustiva del Paso 1 (impide el avance si faltan campos obligatorios o si el teléfono móvil no tiene exactamente 9 dígitos).
-
-3. **Formateo y Validación de RUT Chileno**:
-   - Formateador inteligente en tiempo real que restringe la letra `K` o `k` únicamente al dígito verificador.
-   - Validación matemática estricta mediante el **Algoritmo Módulo 11** tanto en el frontend (para retroalimentación inmediata) como en el backend en la acción de servidor (para absoluta seguridad de base de datos).
-
-4. **Sincronización Multiactiva de Sesión**:
-   - Monitoreo del evento `storage` del navegador para sincronizar el estado de la sesión de forma instantánea a través de todas las pestañas abiertas. Si cierras sesión en una pestaña, se cerrará de inmediato en todas las demás sin necesidad de recargar.
-
-5. **Control de Inventario Preciso por Color**:
-   - Agrupación e indexación de tallas específicas por color (`tallasPorColor`) para respetar los límites de inventario reales de cada variante (por ejemplo, si el color Negro tiene 2 unidades y el Blanco tiene 1, se impide agregar 3 de Negro al carrito).
-   - Ajuste automático de cantidad seleccionada al cambiar de color en la ficha del producto y bloqueo del botón "+" en el carrito al alcanzar el límite real.
-
-6. **Robustez y Seguridad del Sistema**:
-   - Limpieza automática de Radix UI backdrops y pointer-events atascados al navegar al panel de administrador, eliminando pantallas congeladas.
-   - Restricción de caracteres máximos (`maxLength`) a nivel de base de datos, frontend y backend (100 caracteres para el correo y 50 para la contraseña).
-
----
-
 ## Instrucciones de Instalación y Uso (Docker)
 
 El proyecto cuenta con dockerización para facilitar su despliegue reproducible sin necesidad de tener Node.js instalado localmente.
