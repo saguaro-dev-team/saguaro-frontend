@@ -22,7 +22,7 @@ export async function getKpiData(): Promise<KPIData> {
   });
   
   const criticos = await prisma.producto.count({
-    where: { stock: { lt: 10 } }
+    where: { stock: { lt: 10 }, activo: true }
   });
 
   return {
@@ -63,6 +63,9 @@ export async function getVentasMensuales(): Promise<VentasMensuales[]> {
 
 export async function getProductosVendidos(): Promise<ProductoVendido[]> {
   const articulos = await prisma.articulo_pedido.findMany({
+    where: {
+      producto: { activo: true }
+    },
     include: {
       producto: {
         include: { modelo: true }
@@ -94,7 +97,7 @@ export async function getProductosVendidos(): Promise<ProductoVendido[]> {
 
 export async function getStockCritico(): Promise<StockCritico[]> {
   const criticos = await prisma.producto.findMany({
-    where: { stock: { lt: 10 } },
+    where: { stock: { lt: 10 }, activo: true },
     include: {
       modelo: true,
       color: true,
@@ -147,6 +150,9 @@ export async function getStockCritico(): Promise<StockCritico[]> {
 
 export async function getVentasPorCategoria() {
   const articulos = await prisma.articulo_pedido.findMany({
+    where: {
+      producto: { activo: true }
+    },
     include: {
       producto: {
         include: { 
