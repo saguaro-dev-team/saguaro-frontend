@@ -66,6 +66,22 @@ export default function ProductPage({ params }: PageProps) {
     })
   }, [id])
 
+  useEffect(() => {
+    if (selectedTalla && product) {
+      const tempTallas = (selectedColor && product.tallasPorColor && product.tallasPorColor[selectedColor])
+        ? product.tallasPorColor[selectedColor]
+        : product.tallas;
+      
+      const sizeObj = tempTallas.find(s => s.talla === selectedTalla)
+      if (!sizeObj || sizeObj.stock === 0) {
+        setSelectedTalla(null)
+        setQuantity(1)
+      } else if (quantity > sizeObj.stock) {
+        setQuantity(sizeObj.stock)
+      }
+    }
+  }, [selectedColor, product])
+
   if (loading) {
     return <div className="min-h-screen py-16 text-center">Cargando producto...</div>
   }
@@ -81,6 +97,10 @@ export default function ProductPage({ params }: PageProps) {
     : product.imagenes;
 
   const currentMainImage = currentImages[currentImageIndex] || currentImages[0] || '/placeholder.jpg';
+
+  const currentTallas = (selectedColor && product.tallasPorColor && product.tallasPorColor[selectedColor])
+    ? product.tallasPorColor[selectedColor]
+    : product.tallas;
 
   const handleAddToCart = () => {
     if (!selectedTalla || !product) return
@@ -200,7 +220,7 @@ export default function ProductPage({ params }: PageProps) {
                         ? 'border-primary ring-2 ring-primary ring-offset-2'
                         : 'border-border hover:border-muted-foreground'
                     }`}
-                    style={{ backgroundColor: getColorStyle(color) }}
+                    style={{ background: getColorStyle(color) }}
                     title={color}
                   />
                 ))}
@@ -220,10 +240,15 @@ export default function ProductPage({ params }: PageProps) {
                 </Link>
               </div>
               <div className="flex flex-wrap gap-2">
-                {product.tallas.map((size) => (
+                {currentTallas.map((size) => (
                   <button
                     key={size.talla}
-                    onClick={() => setSelectedTalla(size.talla)}
+                    onClick={() => {
+                      setSelectedTalla(size.talla)
+                      if (quantity > size.stock) {
+                        setQuantity(Math.max(1, size.stock))
+                      }
+                    }}
                     disabled={size.stock === 0}
                     className={`flex h-12 w-12 items-center justify-center rounded-lg border text-sm font-medium transition-all ${
                       selectedTalla === size.talla
@@ -240,7 +265,7 @@ export default function ProductPage({ params }: PageProps) {
               {selectedTalla && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   Stock disponible:{' '}
-                  {product.tallas.find((s) => s.talla === selectedTalla)?.stock} unidades
+                  {currentTallas.find((s) => s.talla === selectedTalla)?.stock} unidades
                 </p>
               )}
             </div>
@@ -263,6 +288,7 @@ export default function ProductPage({ params }: PageProps) {
                   variant="ghost"
                   size="icon"
                   onClick={() => setQuantity(quantity + 1)}
+                  disabled={!selectedTalla || quantity >= (currentTallas.find(s => s.talla === selectedTalla)?.stock || 0)}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

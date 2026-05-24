@@ -45,6 +45,20 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isAdmin, router])
 
+  useEffect(() => {
+    // Limpieza global de bugs de Radix UI (pantalla oscurecida o congelada al navegar)
+    if (typeof window !== 'undefined') {
+      document.body.style.pointerEvents = 'auto'
+      document.body.style.overflow = 'auto'
+      
+      // Eliminar cualquier overlay atascado de Radix
+      const stuckOverlays = document.querySelectorAll('[class*="DialogOverlay"], [class*="SheetOverlay"], [data-radix-focus-guard]')
+      stuckOverlays.forEach(el => {
+        el.remove()
+      })
+    }
+  }, [])
+
   if (!isAuthenticated || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sidebar">

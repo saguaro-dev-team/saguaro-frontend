@@ -70,6 +70,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Error parsing user from localstorage", e)
       }
     }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'saguaro_user') {
+        if (!event.newValue) {
+          // Cerró sesión en otra pestaña
+          setUser(null)
+        } else {
+          // Inició sesión en otra pestaña
+          try {
+            const parsed = JSON.parse(event.newValue)
+            if (parsed.fechaRegistro) parsed.fechaRegistro = new Date(parsed.fechaRegistro)
+            setUser(parsed)
+          } catch (e) {
+            console.error("Error parsing user from localstorage event", e)
+          }
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [])
 
   const isAuthenticated = user !== null

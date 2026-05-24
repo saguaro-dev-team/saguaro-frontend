@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,15 +14,20 @@ import { useAuth } from '@/lib/auth-context'
 import { getRegiones } from '@/app/actions/location'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { formatRut } from '@/lib/utils'
+import { formatRut, validateRut } from '@/lib/utils'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function RegisterPage() {
+
+function RegisterContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('redirect') || '/'
   const { register, isAuthenticated } = useAuth()
   
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.href = '/'
+      window.location.href = redirectUrl
     }
     // Cargar regiones
     getRegiones().then(res => {
@@ -30,7 +35,7 @@ export default function RegisterPage() {
         setRegionesData(res.regiones)
       }
     })
-  }, [isAuthenticated])
+  }, [isAuthenticated, redirectUrl])
   
   const [formData, setFormData] = useState({
     nombres: '',
@@ -78,6 +83,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (!validateRut(formData.rut)) {
+      setError('El RUT ingresado no es válido')
+      return
+    }
+
     setIsLoading(true)
 
     const result = await register({
@@ -96,7 +106,7 @@ export default function RegisterPage() {
       detalles: formData.detalles
     })
     if (result.success) {
-      window.location.href = '/'
+      window.location.href = redirectUrl
     } else {
       setError(result.error || 'Ocurrió un error en el registro')
     }
@@ -128,6 +138,14 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {redirectUrl === '/checkout' && (
+                <div className="rounded-lg bg-amber-50/80 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    Debes registrarte para continuar con tu compra.
+                  </span>
+                </div>
+              )}
               {error && (
                 <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
@@ -268,6 +286,7 @@ export default function RegisterPage() {
                     placeholder="********"
                     value={formData.password}
                     onChange={handleChange}
+                    maxLength={50}
                     required
                   />
                   <Button
@@ -295,6 +314,7 @@ export default function RegisterPage() {
                   placeholder="********"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  maxLength={50}
                   required
                 />
               </div>
@@ -379,7 +399,7 @@ export default function RegisterPage() {
 
             <div className="mt-6 text-center text-sm">
               Ya tienes cuenta?{' '}
-              <Link href="/login" className="text-primary hover:underline font-medium">
+              <Link href={`/login${redirectUrl !== '/' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`} className="text-primary hover:underline font-medium">
                 Iniciar sesion
               </Link>
             </div>
@@ -387,5 +407,13 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Cargando...</div>}>
+      <RegisterContent />
+    </Suspense>
   )
 }

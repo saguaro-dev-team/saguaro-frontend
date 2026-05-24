@@ -89,21 +89,31 @@ export function CartSheet() {
                             <Minus className="h-3 w-3" />
                           </Button>
                           <span className="w-8 text-center text-sm">{item.cantidad}</span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() =>
-                              updateQuantity(
-                                item.producto.id,
-                                item.talla,
-                                item.color,
-                                item.cantidad + 1
-                              )
-                            }
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                          {(() => {
+                            const sizeObj = (item.producto.tallasPorColor && item.color && item.producto.tallasPorColor[item.color])
+                              ? item.producto.tallasPorColor[item.color].find(t => t.talla === item.talla)
+                              : item.producto.tallas.find(t => t.talla === item.talla)
+                            const maxStock = sizeObj ? sizeObj.stock : 0
+                            const isMax = item.cantidad >= maxStock
+                            return (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={isMax}
+                                onClick={() =>
+                                  updateQuantity(
+                                    item.producto.id,
+                                    item.talla,
+                                    item.color,
+                                    item.cantidad + 1
+                                  )
+                                }
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            )
+                          })()}
                         </div>
 
                         <p className="font-medium">

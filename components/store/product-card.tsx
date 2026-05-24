@@ -122,7 +122,7 @@ export function ProductCard({ product, selectedColors }: ProductCardProps) {
         </div>
 
         {/* Color options */}
-        {product.colores.length > 1 && (
+        {product.colores.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {product.colores.slice(0, 6).map((color) => {
               const isActive = activeColor === color
@@ -140,7 +140,7 @@ export function ProductCard({ product, selectedColors }: ProductCardProps) {
                       : 'border-border hover:scale-110'
                   }`}
                   style={{
-                    backgroundColor: getColorValue(color)
+                    background: getColorValue(color)
                   }}
                   title={color}
                 />

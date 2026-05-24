@@ -23,6 +23,7 @@ import { formatPrice } from '@/lib/store-data'
 import { getRegiones } from '@/app/actions/location'
 import { createOrder } from '@/app/actions/orders'
 import { initWebpayTransaction } from '@/app/actions/webpay'
+import { getUserProfile, getUserAddresses } from '@/app/actions/profile'
 import { useEffect } from 'react'
 
 export default function CheckoutPage() {
@@ -51,6 +52,54 @@ export default function CheckoutPage() {
   
   const [regionesData, setRegionesData] = useState<any[]>([])
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [validationError, setValidationError] = useState('')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.push('/login?redirect=/checkout')
+    }
+  }, [mounted, isAuthenticated, router])
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      // Load user profile details (surnames, telephone)
+      getUserProfile(user.id).then(res => {
+        if (res.success && res.profile) {
+          setFormData(prev => ({
+            ...prev,
+            email: user.email || prev.email,
+            nombres: res.profile.nombres || prev.nombres,
+            primer_apellido: res.profile.primer_apellido || prev.primer_apellido,
+            segundo_apellido: res.profile.segundo_apellido || prev.segundo_apellido,
+            telefono: res.profile.telefono || prev.telefono,
+          }))
+        }
+      })
+
+      // Load user addresses details (calle, numero, departamento, comuna, detalles)
+      getUserAddresses(user.id).then(res => {
+        if (res.success && res.direcciones && res.direcciones.length > 0) {
+          const principal = res.direcciones.find((dir: any) => dir.es_principal) || res.direcciones[0]
+          setFormData(prev => ({
+            ...prev,
+            calle: principal.calle || prev.calle,
+            numero: principal.numero || prev.numero,
+            departamento: principal.departamento || prev.departamento || '',
+            detalles: principal.detalles || prev.detalles || '',
+            id_comuna: principal.id_comuna || prev.id_comuna,
+          }))
+          if (principal.comuna) {
+            setSelectedRegionId(principal.comuna.id_region)
+          }
+        }
+      })
+    }
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     getRegiones().then(res => {
@@ -65,6 +114,23 @@ export default function CheckoutPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const handleContinueToStep2 = () => {
+    setValidationError('')
+    const { email, nombres, primer_apellido, segundo_apellido, telefono, calle, numero, id_comuna } = formData
+    
+    if (!email || !nombres || !primer_apellido || !segundo_apellido || !telefono || !calle || !numero || !id_comuna) {
+      setValidationError('Por favor completa todos los campos requeridos.')
+      return
+    }
+
+    if (telefono.length !== 9) {
+      setValidationError('El teléfono debe tener exactamente 9 dígitos.')
+      return
+    }
+
+    setStep(2)
   }
 
   const [checkoutError, setCheckoutError] = useState('')
@@ -103,6 +169,19 @@ export default function CheckoutPage() {
       setCheckoutError(res.error || 'Ocurrió un error al procesar el pedido.')
       setIsProcessing(false)
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
+        <span className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
+        <p className="text-muted-foreground font-medium">Cargando checkout...</p>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   if (webpayData) {
@@ -230,8 +309,15 @@ export default function CheckoutPage() {
                         value={formData.email}
                         onChange={handleInputChange}
                         maxLength={100}
+                        disabled={isAuthenticated}
+                        className={isAuthenticated ? "bg-muted/50 text-muted-foreground cursor-not-allowed border-dashed" : ""}
                         required
                       />
+                      {isAuthenticated && (
+                        <p className="text-[11px] text-muted-foreground font-medium">
+                          El comprobante de compra se enviará al correo asociado a tu cuenta.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="telefono">Telefono</Label>
@@ -383,7 +469,13 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <Button className="w-full" onClick={() => setStep(2)}>
+                  {validationError && (
+                    <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium mb-4">
+                      {validationError}
+                    </div>
+                  )}
+
+                  <Button className="w-full" onClick={handleContinueToStep2}>
                     Continuar al Envio
                   </Button>
                 </CardContent>

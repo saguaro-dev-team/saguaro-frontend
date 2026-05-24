@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { validateRut } from '@/lib/utils'
 
 export async function registerUser(data: {
   email: string
@@ -19,6 +20,18 @@ export async function registerUser(data: {
   detalles?: string
 }) {
   try {
+    // Validar límites de caracteres
+    if (data.email.length > 100) {
+      return { success: false, error: 'El email supera el límite de 100 caracteres' }
+    }
+    if (data.password.length > 50) {
+      return { success: false, error: 'La contraseña supera el límite de 50 caracteres' }
+    }
+
+    if (!validateRut(data.rut)) {
+      return { success: false, error: 'El RUT ingresado no es válido' }
+    }
+
     // Verificar si el correo o RUT ya existen
     const existingUser = await prisma.usuario.findFirst({
       where: {
@@ -105,6 +118,11 @@ export async function registerUser(data: {
 
 export async function loginUser(email: string, password: string) {
   try {
+    // Validar límites de caracteres
+    if (email.length > 100 || password.length > 50) {
+      return { success: false, error: 'El correo o la contraseña no coinciden' }
+    }
+
     const user = await prisma.usuario.findUnique({
       where: { direccion_email: email },
       include: {
@@ -113,7 +131,7 @@ export async function loginUser(email: string, password: string) {
       }
     })
 
-    if (!user) return { success: false, error: 'Credenciales inválidas' }
+    if (!user) return { success: false, error: 'El correo o la contraseña no coinciden' }
     if (!user.estado) return { success: false, error: 'Tu cuenta ha sido desactivada' }
     if (!user.login) return { success: false, error: 'Cuenta no tiene acceso web' }
     if (user.login.bloqueado) return { success: false, error: 'Tu cuenta ha sido bloqueada' }
@@ -121,7 +139,7 @@ export async function loginUser(email: string, password: string) {
     const isMatch = await bcrypt.compare(password, user.login.hash_contrasena)
     if (!isMatch) {
       // Opcional: Registrar en historial_intentos_login
-      return { success: false, error: 'Credenciales inválidas' }
+      return { success: false, error: 'El correo o la contraseña no coinciden' }
     }
 
     // Actualizar fecha conexión

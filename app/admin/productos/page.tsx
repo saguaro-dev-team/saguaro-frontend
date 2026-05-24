@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, MoreHorizontal, Package, Check, X, Tag, DollarSign, Box, Minus, ArrowUp, ArrowDown, Undo2 } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, MoreHorizontal, Package, Check, X, Tag, DollarSign, Box, Minus, ArrowUp, ArrowDown, Undo2, Palette, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
@@ -47,7 +47,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatPrice } from '@/lib/store-data'
 import { getColorValue } from '@/lib/color-utils'
 import { getAllProducts } from '@/app/actions/products'
-import { createProduct, updateProductFull, toggleProductStatus, getProductVariants } from '@/app/actions/admin'
+import { createProduct, updateProductFull, toggleProductStatus, getProductVariants, getColorsMap, updateColorsMap, uploadProductImage } from '@/app/actions/admin'
 import { getColores } from '@/app/actions/location'
 import type { Product } from '@/lib/store-types'
 
@@ -72,6 +72,49 @@ export default function AdminProductsPage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  // Color Catalog State
+  const [colorsMapOpen, setColorsMapOpen] = useState(false)
+  const [localColorsMap, setLocalColorsMap] = useState<Record<string, string>>({})
+  const [editingColorKey, setEditingColorKey] = useState<string | null>(null)
+  const [newColorKey, setNewColorKey] = useState('')
+  const [newColorVal, setNewColorVal] = useState('')
+
+  const loadColorsMap = () => {
+    getColorsMap().then(res => {
+      if (res.success && res.colorsMap) {
+        setLocalColorsMap(res.colorsMap)
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (colorsMapOpen) {
+      loadColorsMap()
+    }
+  }, [colorsMapOpen])
+
+  const handleSaveColorsMap = async (updatedMap = localColorsMap) => {
+    const res = await updateColorsMap(updatedMap)
+    if (res.success) {
+      toast({
+        title: "¡Catálogo de colores guardado!",
+        description: "Los cambios se aplicaron exitosamente en toda la tienda.",
+        duration: 3000,
+      })
+      getColores().then(colorRes => {
+        if (colorRes.success && colorRes.colores) {
+          setAllColors(colorRes.colores)
+        }
+      })
+    } else {
+      toast({
+        title: "Error al guardar colores",
+        description: res.error,
+        variant: "destructive"
+      })
+    }
+  }
+
   // Form Fields
   const [formData, setFormData] = useState({
     nombre: '',
@@ -90,6 +133,10 @@ export default function AdminProductsPage() {
     is_recomendado: false,
     caracteristicas: ''
   })
+
+  // Color-specific images state
+  const [imagesByColor, setImagesByColor] = useState<Record<string, string>>({})
+  const [expandedColors, setExpandedColors] = useState<Record<string, boolean>>({})
 
   const { toast } = useToast()
 
@@ -144,6 +191,8 @@ export default function AdminProductsPage() {
       is_recomendado: false,
       caracteristicas: 'Suela Flexible 5mm\nZero Drop\nPuntera Ancha'
     })
+    setImagesByColor({})
+    setExpandedColors({})
     setModalOpen(true)
   }
 
@@ -176,6 +225,16 @@ export default function AdminProductsPage() {
       caracteristicas: product.caracteristicas.join('\n')
     })
     
+    // Mapear imágenes por color desde el manifest
+    const tempImagesByColor: Record<string, string> = {}
+    if (product.imagenesPorColor) {
+      Object.entries(product.imagenesPorColor).forEach(([color, urls]) => {
+        tempImagesByColor[color] = urls.join(', ')
+      })
+    }
+    setImagesByColor(tempImagesByColor)
+    setExpandedColors({})
+    
     getProductVariants(product.id).then(res => {
       if (res.success && res.variants) {
         setVariantsStock(res.variants.map((v: any) => ({ ...v, originalStock: v.stock })))
@@ -197,7 +256,8 @@ export default function AdminProductsPage() {
       ...formData,
       caracteristicas: caracteristicasArray,
       id_categoria: parseInt(formData.id_categoria),
-      variantsStock: isEditing ? variantsStock.map(v => ({ id_producto: v.id_producto, stock: v.stock })) : undefined
+      variantsStock: isEditing ? variantsStock.map(v => ({ id_producto: v.id_producto, stock: v.stock })) : undefined,
+      imagesByColor: imagesByColor
     }
 
     let res
@@ -257,10 +317,16 @@ export default function AdminProductsPage() {
             Administra el catálogo completo de tu tienda
           </p>
         </div>
-        <Button onClick={handleAddClick}>
-          <Plus className="h-4 w-4 mr-2" />
-          Agregar Producto
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => setColorsMapOpen(true)}>
+            <Palette className="h-4 w-4 mr-2" />
+            Administrar Colores
+          </Button>
+          <Button onClick={handleAddClick}>
+            <Plus className="h-4 w-4 mr-2" />
+            Agregar Producto
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4 mb-6">
@@ -675,6 +741,215 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
+            {/* Sección: Imágenes por Color */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Palette className="h-4 w-4" /> Imágenes por Color
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  Gestiona las imágenes específicas para cada versión de color del calzado.
+                </span>
+              </div>
+              
+              {formData.color.split(',').map(s => s.trim()).filter(Boolean).length === 0 ? (
+                <div className="text-center py-8 border border-dashed rounded-xl text-muted-foreground text-sm bg-muted/5">
+                  Agrega al menos un color arriba para configurar sus imágenes.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {formData.color.split(',').map(s => s.trim()).filter(Boolean).map(color => {
+                    const colorVal = getColorValue(color)
+                    const urls = (imagesByColor[color] || '').split(',').map(u => u.trim()).filter(Boolean)
+                    const isExpanded = !!expandedColors[color]
+                    
+                    return (
+                      <div key={color} className="rounded-xl border bg-card overflow-hidden shadow-sm transition-all duration-200">
+                        {/* Cabecera del Acordeón */}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedColors({ ...expandedColors, [color]: !isExpanded })}
+                          className="flex items-center justify-between w-full px-5 py-3.5 hover:bg-muted/40 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="h-5 w-5 rounded-full border border-black/10 shadow-inner"
+                              style={{ background: colorVal }}
+                            />
+                            <div>
+                              <span className="font-extrabold text-sm capitalize text-foreground">{color}</span>
+                              <span className="text-xs text-muted-foreground ml-3">
+                                {urls.length === 0 ? 'Sin imágenes' : `${urls.length} ${urls.length === 1 ? 'imagen' : 'imágenes'}`}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                              {isExpanded ? 'Contraer' : 'Expandir'}
+                            </span>
+                          </div>
+                        </button>
+                        
+                        {/* Contenido del Acordeón */}
+                        {isExpanded && (
+                          <div className="p-5 border-t bg-muted/[0.02] space-y-4">
+                            {urls.length === 0 ? (
+                              <div className="text-center py-6 border border-dashed rounded-lg text-muted-foreground text-xs bg-muted/5">
+                                No hay imágenes configuradas para este color. ¡Sube fotos locales o agrega URLs manuales abajo!
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {urls.map((url, idx) => (
+                                  <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-background shadow-inner">
+                                    {/* Thumbnail Preview */}
+                                    <div className="relative h-12 w-12 rounded border bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img 
+                                        src={url} 
+                                        alt={`Imagen ${idx + 1}`} 
+                                        className="object-cover h-full w-full"
+                                        onError={(e) => {
+                                          (e.target as HTMLElement).style.display = 'none'
+                                        }}
+                                      />
+                                      <span className="text-[10px] text-muted-foreground font-extrabold absolute bg-background/80 px-1 rounded bottom-0.5 right-0.5">
+                                        #{idx + 1}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* URL Input */}
+                                    <Input 
+                                      value={url}
+                                      onChange={e => {
+                                        const currentList = [...urls]
+                                        currentList[idx] = e.target.value
+                                        setImagesByColor({
+                                          ...imagesByColor,
+                                          [color]: currentList.join(', ')
+                                        })
+                                      }}
+                                      placeholder="Ruta o URL de la imagen..."
+                                      className="focus-visible:ring-primary text-xs h-9 flex-1"
+                                    />
+                                    
+                                    {/* Delete Button */}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        const currentList = urls.filter((_, uIdx) => uIdx !== idx)
+                                        setImagesByColor({
+                                          ...imagesByColor,
+                                          [color]: currentList.join(', ')
+                                        })
+                                      }}
+                                      className="h-9 w-9 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Panel de Controles / Agregar */}
+                            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                              {/* Subir local */}
+                              <div className="relative flex-1">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="w-full h-9 gap-1.5 text-xs font-bold shrink-0 relative overflow-hidden bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  <span>Subir Imágenes</span>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    multiple
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    onChange={async (e) => {
+                                      const files = e.target.files
+                                      if (!files || files.length === 0) return
+                                      
+                                      const modelName = formData.nombre || 'Sin Nombre'
+                                      const colorName = color
+                                      
+                                      toast({
+                                        title: "Subiendo imagen(es)...",
+                                        description: "Cargando archivos en el almacenamiento de imágenes."
+                                      })
+                                      
+                                      for (let i = 0; i < files.length; i++) {
+                                        const file = files[i]
+                                        const reader = new FileReader()
+                                        
+                                        reader.onload = async (event) => {
+                                          const base64 = event.target?.result as string
+                                          if (!base64) return
+                                          
+                                          const res = await uploadProductImage(modelName, colorName, base64, file.name)
+                                          if (res.success && res.url) {
+                                            setImagesByColor(prev => {
+                                              const currentList = prev[color] ? prev[color].split(',').map(u => u.trim()).filter(Boolean) : []
+                                              if (!currentList.includes(res.url)) {
+                                                currentList.push(res.url)
+                                              }
+                                              return {
+                                                ...prev,
+                                                [color]: currentList.join(', ')
+                                              }
+                                            })
+                                            toast({
+                                              title: "¡Imagen guardada!",
+                                              description: `Archivo: ${file.name}`,
+                                              duration: 3000
+                                            })
+                                          } else {
+                                            toast({
+                                              title: "Error al subir",
+                                              description: res.error || "Inténtalo de nuevo",
+                                              variant: "destructive"
+                                            })
+                                          }
+                                        }
+                                        reader.readAsDataURL(file)
+                                      }
+                                    }}
+                                  />
+                                </Button>
+                              </div>
+                              
+                              {/* Añadir manual */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const currentList = [...urls, '']
+                                  setImagesByColor({
+                                    ...imagesByColor,
+                                    [color]: currentList.join(', ')
+                                  })
+                                }}
+                                className="flex-1 h-9 gap-1.5 text-xs font-bold"
+                              >
+                                <Plus className="h-4 w-4" />
+                                <span>Añadir Fila URL Manual</span>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             {isEditing && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-2">
@@ -769,6 +1044,36 @@ export default function AdminProductsPage() {
                             <span className="font-extrabold text-sm text-foreground tracking-tight">{colorName}</span>
                           </div>
                           <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const isCurrentlyActive = variants.some((v: any) => v.stock > 0)
+                                if (isCurrentlyActive) {
+                                  // Desactivar: poner a 0 el stock de todas las tallas de este color
+                                  setVariantsStock(prev => prev.map(item => 
+                                    variants.some((v: any) => v.id_producto === item.id_producto) 
+                                      ? { ...item, stock: 0 } 
+                                      : item
+                                  ))
+                                } else {
+                                  // Activar: poner un stock de 10 a todas las tallas de este color
+                                  setVariantsStock(prev => prev.map(item => 
+                                    variants.some((v: any) => v.id_producto === item.id_producto) 
+                                      ? { ...item, stock: 10 } 
+                                      : item
+                                  ))
+                                }
+                              }}
+                              className={`h-7 px-2.5 text-[10px] font-bold transition-all border ${
+                                variants.some((v: any) => v.stock > 0)
+                                  ? 'text-rose-600 hover:text-rose-700 bg-rose-500/10 hover:bg-rose-500/20 border-rose-200'
+                                  : 'text-emerald-600 hover:text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-200'
+                              }`}
+                            >
+                              {variants.some((v: any) => v.stock > 0) ? 'Desactivar Color' : 'Activar Color'}
+                            </Button>
                             <Badge variant="secondary" className="text-[10px] font-bold py-0.5 px-2 bg-primary/5 text-primary border border-primary/10">
                               Stock Total: {variants.reduce((acc: number, v: any) => acc + v.stock, 0)} un.
                             </Badge>
@@ -930,6 +1235,121 @@ export default function AdminProductsPage() {
                 'Guardar Producto'
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={colorsMapOpen} onOpenChange={setColorsMapOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6 overflow-hidden border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              Administrar Catálogo de Colores
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto my-4 pr-2 space-y-6 scrollbar-thin">
+            {/* Formulario Agregar/Editar */}
+            <div className="p-4 rounded-xl border bg-muted/20 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                {editingColorKey ? 'Editar Color' : 'Agregar Nuevo Color al Catálogo'}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold">Nombre del Color (Ej: "Negro Rojo")</label>
+                  <Input 
+                    value={newColorKey} 
+                    onChange={e => setNewColorKey(e.target.value)} 
+                    placeholder="Ej: verde negro"
+                    disabled={!!editingColorKey}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold">Código CSS (Ej: #000000 o linear-gradient...)</label>
+                  <Input 
+                    value={newColorVal} 
+                    onChange={e => setNewColorVal(e.target.value)} 
+                    placeholder="Ej: linear-gradient(135deg, #1B7B4E 50%, #1a1a1a 50%)"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                {editingColorKey && (
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    setEditingColorKey(null)
+                    setNewColorKey('')
+                    setNewColorVal('')
+                  }}>
+                    Cancelar Edición
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => {
+                  const key = newColorKey.trim().toLowerCase()
+                  const val = newColorVal.trim()
+                  if (!key || !val) {
+                    toast({ title: "Campos incompletos", description: "Debes rellenar el nombre y el código.", variant: "destructive" })
+                    return
+                  }
+                  
+                  const updatedMap = {
+                    ...localColorsMap,
+                    [key]: val
+                  }
+                  setLocalColorsMap(updatedMap)
+                  handleSaveColorsMap(updatedMap)
+                  
+                  setEditingColorKey(null)
+                  setNewColorKey('')
+                  setNewColorVal('')
+                }}>
+                  {editingColorKey ? 'Actualizar Color' : 'Guardar y Agregar'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Listado de Colores Existentes */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Colores Registrados</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {Object.entries(localColorsMap).map(([key, val]) => (
+                  <div key={key} className="flex items-center justify-between p-3 rounded-lg border bg-card shadow-sm hover:shadow transition-shadow">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="h-8 w-8 rounded-full border shadow-inner shrink-0"
+                        style={{ background: val }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold capitalize truncate">{key}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[180px]">{val}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                        setEditingColorKey(key)
+                        setNewColorKey(key)
+                        setNewColorVal(val)
+                      }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => {
+                        if (confirm(`¿Estás seguro de eliminar el color "${key}" del catálogo?`)) {
+                          const updated = { ...localColorsMap }
+                          delete updated[key]
+                          setLocalColorsMap(updated)
+                          handleSaveColorsMap(updated)
+                        }
+                      }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="border-t pt-4">
+            <Button onClick={() => setColorsMapOpen(false)}>Cerrar Administrador</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

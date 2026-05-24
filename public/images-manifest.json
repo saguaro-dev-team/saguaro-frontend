@@ -790,5 +790,10 @@
       "/zapatillas/Niños/Deportivas/Will 1/verde/6.jpg",
       "/zapatillas/Niños/Deportivas/Will 1/verde/7.jpg"
     ]
+  },
+  "Prueba": {
+    "Negro": [
+      "https://mxlsnnxmfuevzqpdqhtv.supabase.co/storage/v1/object/public/zapatillas/Prueba/Negro/images.jpeg"
+    ]
   }
 }

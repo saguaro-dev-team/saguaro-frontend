@@ -39,6 +39,7 @@ export interface Product {
   nuevo: boolean
   descuento?: number
   activo?: boolean
+  tallasPorColor?: Record<string, ProductSize[]>
 }
 
 export interface CartItem {

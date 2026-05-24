@@ -32,16 +32,31 @@ function mapProduct(m: any): Product {
   // El modelo tiene productos (variantes). Sacaremos la información de ahí.
   const variantes = m.productos || []
   
-  // Extraer tallas únicas con stock sumado
+  // Extraer tallas únicas con stock sumado y agrupar por color
   const tallasMap = new Map<number, number>()
   const coloresSet = new Set<string>()
+  const tallasPorColor: Record<string, ProductSize[]> = {}
   let precioOriginal = 0;
   let precioOferta: number | undefined = undefined;
   
   variantes.forEach((v: any) => {
      const tName = parseInt(v.talla?.nombre_talla) || 0
      tallasMap.set(tName, (tallasMap.get(tName) || 0) + v.stock)
-     if (v.color?.nombre_color) coloresSet.add(v.color.nombre_color)
+     
+     const colorName = v.color?.nombre_color || ''
+     if (colorName) {
+       coloresSet.add(colorName)
+       if (!tallasPorColor[colorName]) {
+         tallasPorColor[colorName] = []
+       }
+       const existingTalla = tallasPorColor[colorName].find(t => t.talla === tName)
+       if (existingTalla) {
+         existingTalla.stock += v.stock
+       } else {
+         tallasPorColor[colorName].push({ talla: tName, stock: v.stock })
+       }
+     }
+     
      if (precioOriginal === 0) precioOriginal = v.precio
      
      // Si tiene promoción activa
@@ -95,6 +110,7 @@ function mapProduct(m: any): Product {
     nuevo: isNuevo,
     descuento: precioOferta && precioOriginal ? Math.round((1 - precioOferta / precioOriginal) * 100) : undefined,
     activo: m.activo ?? true,
+    tallasPorColor,
   }
 }
 
@@ -178,7 +194,7 @@ export async function getProductsByCategoryStr(categoria: string) {
     return modelos.map(mapProduct)
   } catch (error) {
     console.error("[getProductsByCategoryStr] Error:", error)
-    return []
+    throw error
   }
 }
 

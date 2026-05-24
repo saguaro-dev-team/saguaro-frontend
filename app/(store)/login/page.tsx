@@ -4,22 +4,27 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
 
-export default function LoginPage() {
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('redirect') || '/'
   const { login, isAuthenticated } = useAuth()
   
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.href = '/'
+      window.location.href = redirectUrl
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, redirectUrl])
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +40,7 @@ export default function LoginPage() {
     const result = await login(email, password)
     
     if (result.success) {
-      window.location.href = '/'
+      window.location.href = redirectUrl
     } else {
       setError(result.error || 'Ocurrió un error al iniciar sesión')
     }
@@ -67,6 +72,14 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {redirectUrl === '/checkout' && (
+                <div className="rounded-lg bg-amber-50/80 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    Debes iniciar sesión para continuar con tu compra.
+                  </span>
+                </div>
+              )}
               {error && (
                 <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
@@ -81,6 +94,7 @@ export default function LoginPage() {
                   placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  maxLength={100}
                   required
                 />
               </div>
@@ -102,6 +116,7 @@ export default function LoginPage() {
                     placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    maxLength={50}
                     required
                   />
                   <Button
@@ -130,7 +145,7 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center text-sm">
               No tienes cuenta?{' '}
-              <Link href="/registro" className="text-primary hover:underline font-medium">
+              <Link href={`/registro${redirectUrl !== '/' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`} className="text-primary hover:underline font-medium">
                 Crear cuenta
               </Link>
             </div>
@@ -141,3 +156,12 @@ export default function LoginPage() {
     </div>
   )
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Cargando...</div>}>
+      <LoginContent />
+    </Suspense>
+  )
+}
+

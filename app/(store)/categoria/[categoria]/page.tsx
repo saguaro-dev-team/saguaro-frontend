@@ -32,6 +32,12 @@ const categoryNames: Record<string, string> = {
   nino: 'Niños',
 }
 
+const genreLabels: Record<string, string> = {
+  hombre: 'Hombre',
+  mujer: 'Mujer',
+  nino: 'Niño',
+}
+
 const categoryDescriptions: Record<string, string> = {
   hombre: 'Descubre nuestra colección de calzado barefoot para hombre. Desde running hasta casual, encuentra el par perfecto.',
   mujer: 'Calzado barefoot diseñado para la mujer moderna. Estilo, comodidad y salud en cada paso.',
@@ -60,8 +66,9 @@ interface PageProps {
   params: Promise<{ categoria: string }>
 }
 
-function CategoryContent({ categoria }: { categoria: string }) {
+function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
   const searchParams = useSearchParams()
+  const categoria = useMemo(() => (rawCategoria || '').trim().toLowerCase(), [rawCategoria])
   
   const [dbProducts, setDbProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,6 +94,13 @@ function CategoryContent({ categoria }: { categoria: string }) {
     const tipo = searchParams.get('tipo')
     return tipo ? [tipo as ProductType] : []
   })
+
+  // Sincronizar el estado de tipo seleccionado cuando cambian los parámetros de búsqueda de la URL (ej. al hacer clic en el menú superior)
+  useEffect(() => {
+    const tipo = searchParams.get('tipo')
+    setSelectedTypes(tipo ? [tipo as ProductType] : [])
+  }, [searchParams])
+
   const [sortBy, setSortBy] = useState('featured')
   const [showOnlyNew, setShowOnlyNew] = useState(false)
   const [showOnlyDiscount, setShowOnlyDiscount] = useState(false)
@@ -225,6 +239,17 @@ function CategoryContent({ categoria }: { categoria: string }) {
     return Array.from(sizes).sort((a, b) => a - b)
   }, [dbProducts])
 
+  const sizesNino = useMemo(() => {
+    const sizes = new Set<number>()
+    dbProducts.forEach(p => {
+      const g = p.genero?.toLowerCase()
+      if (g === 'nino') {
+        p.tallas.forEach(t => { if (t.stock > 0) sizes.add(t.talla) })
+      }
+    })
+    return Array.from(sizes).sort((a, b) => a - b)
+  }, [dbProducts])
+
   const uniqueUsos = useMemo(() => {
     const usos = new Set<string>()
     dbProducts.forEach(p => p.uso && usos.add(p.uso.toLowerCase()))
@@ -254,18 +279,18 @@ function CategoryContent({ categoria }: { categoria: string }) {
       {/* Genero Filter */}
       {categoria === 'todos' && (
         <div className="animate-in fade-in slide-in-from-left-2 duration-300">
-          <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Género</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Público</h3>
           <div className="flex flex-wrap gap-2">
-            {['hombre', 'mujer', 'unisex'].map((g) => (
+            {['hombre', 'mujer', 'nino'].map((g) => (
               <Badge 
                 key={g} 
                 variant={selectedGeneros.includes(g) ? "default" : "outline"}
-                className={`cursor-pointer capitalize px-4 py-1.5 text-xs transition-all duration-200 ${
+                className={`cursor-pointer px-4 py-1.5 text-xs transition-all duration-200 ${
                   selectedGeneros.includes(g) ? 'scale-105 shadow-sm' : 'hover:bg-muted'
                 }`}
                 onClick={() => toggleFilter(selectedGeneros, setSelectedGeneros, g)}
               >
-                {g}
+                {genreLabels[g] || g}
               </Badge>
             ))}
           </div>
@@ -300,7 +325,28 @@ function CategoryContent({ categoria }: { categoria: string }) {
 
       {/* Sizes Filter */}
       <div className="animate-in fade-in slide-in-from-left-2 duration-300 delay-100">
-        {categoria !== 'mujer' && sizesHombre.length > 0 && (
+        {(categoria === 'nino' || selectedGeneros.includes('nino')) && sizesNino.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Tallas Niño</h3>
+            <div className="grid grid-cols-4 gap-2">
+              {sizesNino.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => toggleSize(s)}
+                  className={`h-10 w-full flex items-center justify-center text-xs font-bold border rounded-sm transition-all duration-200 ${
+                    selectedSizes.includes(s) 
+                    ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105' 
+                    : 'bg-background hover:border-primary/50 text-foreground/80'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {categoria !== 'mujer' && categoria !== 'nino' && !selectedGeneros.includes('nino') && sizesHombre.length > 0 && (
           <div className="mb-6">
             <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Tallas Hombre</h3>
             <div className="grid grid-cols-4 gap-2">
@@ -321,7 +367,7 @@ function CategoryContent({ categoria }: { categoria: string }) {
           </div>
         )}
 
-        {categoria !== 'hombre' && sizesMujer.length > 0 && (
+        {categoria !== 'hombre' && categoria !== 'nino' && !selectedGeneros.includes('nino') && sizesMujer.length > 0 && (
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Tallas Mujer</h3>
             <div className="grid grid-cols-4 gap-2">
@@ -535,7 +581,7 @@ function CategoryContent({ categoria }: { categoria: string }) {
                     className="cursor-pointer capitalize"
                     onClick={() => toggleFilter(selectedGeneros, setSelectedGeneros, g)}
                   >
-                    {`Género: ${g}`}
+                    {`Público: ${genreLabels[g] || g}`}
                     <X className="h-3 w-3 ml-1" />
                   </Badge>
                 ))}

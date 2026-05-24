@@ -47,21 +47,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((acc, item) => acc + item.producto.precio * item.cantidad, 0)
 
   const addItem = useCallback((producto: Product, talla: number, color: string, cantidad = 1) => {
+    const sizeObj = (producto.tallasPorColor && color && producto.tallasPorColor[color])
+      ? producto.tallasPorColor[color].find(t => t.talla === talla)
+      : producto.tallas.find(t => t.talla === talla)
+    const maxStock = sizeObj ? sizeObj.stock : 0
+
     setItems(current => {
       const existingIndex = current.findIndex(
         item => item.producto.id === producto.id && item.talla === talla && item.color === color
       )
 
       if (existingIndex >= 0) {
+        const currentQty = current[existingIndex].cantidad
+        const nextQty = Math.min(currentQty + cantidad, maxStock)
+
         const updated = [...current]
         updated[existingIndex] = {
           ...updated[existingIndex],
-          cantidad: updated[existingIndex].cantidad + cantidad,
+          cantidad: nextQty,
         }
         return updated
       }
 
-      return [...current, { producto, talla, color, cantidad }]
+      const initialQty = Math.min(cantidad, maxStock)
+      if (initialQty <= 0) return current
+
+      return [...current, { producto, talla, color, cantidad: initialQty }]
     })
     setIsOpen(true)
   }, [])
@@ -81,11 +92,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     setItems(current =>
-      current.map(item =>
-        item.producto.id === productoId && item.talla === talla && item.color === color
-          ? { ...item, cantidad }
-          : item
-      )
+      current.map(item => {
+        if (item.producto.id === productoId && item.talla === talla && item.color === color) {
+          const sizeObj = (item.producto.tallasPorColor && color && item.producto.tallasPorColor[color])
+            ? item.producto.tallasPorColor[color].find(t => t.talla === talla)
+            : item.producto.tallas.find(t => t.talla === talla)
+          const maxStock = sizeObj ? sizeObj.stock : 0
+          return { ...item, cantidad: Math.min(cantidad, maxStock) }
+        }
+        return item
+      })
     )
   }, [removeItem])
 
