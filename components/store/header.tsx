@@ -197,10 +197,10 @@ export function Header() {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onSelect={(e) => {
+                    onSelect={async (e) => {
                       e.preventDefault();
                       logout();
-                      window.location.href = '/';
+                      router.push('/');
                     }} 
                     className="text-destructive"
                   >

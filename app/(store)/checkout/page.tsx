@@ -29,7 +29,7 @@ import { useEffect } from 'react'
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, isLoading } = useAuth()
   
   const [step, setStep] = useState(1)
   const [shippingMethod, setShippingMethod] = useState('standard')
@@ -60,10 +60,10 @@ export default function CheckoutPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !isAuthenticated) {
+    if (mounted && !isLoading && !isAuthenticated) {
       router.push('/login?redirect=/checkout')
     }
-  }, [mounted, isAuthenticated, router])
+  }, [mounted, isLoading, isAuthenticated, router])
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {

@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { CartProvider } from '@/lib/cart-context'
 import { Header } from '@/components/store/header'
 import { Footer } from '@/components/store/footer'
@@ -7,6 +11,30 @@ export default function StoreLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    // Limpieza global de bugs de Radix UI (pantalla oscurecida o congelada al navegar)
+    if (typeof window !== 'undefined') {
+      const cleanup = () => {
+        document.body.style.pointerEvents = 'auto'
+        document.body.style.overflow = 'auto'
+        
+        // Eliminar cualquier overlay atascado de Radix
+        const stuckOverlays = document.querySelectorAll(
+          '[data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="dialog-portal"], [data-slot="sheet-portal"], [data-radix-focus-guard], [class*="DialogOverlay"], [class*="SheetOverlay"]'
+        )
+        stuckOverlays.forEach(el => {
+          el.remove()
+        })
+      }
+
+      cleanup()
+      const timer = setTimeout(cleanup, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [pathname])
+
   return (
     <CartProvider>
       <div className="flex min-h-screen flex-col">

@@ -8,7 +8,8 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isAdmin: boolean
-  login: (email: string, password: string) => Promise<{success: boolean, error?: string}>
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<{success: boolean, role?: UserRole, error?: string}>
   register: (data: RegisterData) => Promise<{success: boolean, error?: string}>
   logout: () => void
   updateUser: (data: Partial<User>) => void
@@ -57,6 +58,7 @@ const mockUsers: (User & { password: string })[] = [
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     setIsClient(true)
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Error parsing user from localstorage", e)
       }
     }
+    setIsLoading(false)
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'saguaro_user') {
@@ -96,10 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isAuthenticated = user !== null
-  const isAdmin = user?.role === 'administrador' || user?.role === 'admin'
+  const isAdmin = user?.role?.toLowerCase() === 'administrador' || user?.role?.toLowerCase() === 'admin'
 
 
-  const login = useCallback(async (email: string, password: string): Promise<{success: boolean, error?: string}> => {
+  const login = useCallback(async (email: string, password: string): Promise<{success: boolean, role?: UserRole, error?: string}> => {
     try {
       const result = await loginUser(email, password)
       
@@ -114,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(newUser)
         if (typeof window !== 'undefined') localStorage.setItem('saguaro_user', JSON.stringify(newUser))
-        return { success: true }
+        return { success: true, role: newUser.role }
       }
       return { success: false, error: result.error }
     } catch (error) {
@@ -167,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated,
         isAdmin,
+        isLoading,
         login,
         register,
         logout,

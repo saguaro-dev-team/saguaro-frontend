@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { 
@@ -36,30 +36,44 @@ const navigation = [
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const { isAuthenticated, isAdmin, user, logout } = useAuth()
+  const pathname = usePathname()
+  const { isAuthenticated, isAdmin, isLoading, user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
-      router.push('/login')
+    if (!isLoading && (!isAuthenticated || !isAdmin)) {
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname + window.location.search
+        router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
+      } else {
+        router.push('/login')
+      }
     }
-  }, [isAuthenticated, isAdmin, router])
+  }, [isLoading, isAuthenticated, isAdmin, router])
 
   useEffect(() => {
     // Limpieza global de bugs de Radix UI (pantalla oscurecida o congelada al navegar)
     if (typeof window !== 'undefined') {
-      document.body.style.pointerEvents = 'auto'
-      document.body.style.overflow = 'auto'
-      
-      // Eliminar cualquier overlay atascado de Radix
-      const stuckOverlays = document.querySelectorAll('[class*="DialogOverlay"], [class*="SheetOverlay"], [data-radix-focus-guard]')
-      stuckOverlays.forEach(el => {
-        el.remove()
-      })
-    }
-  }, [])
+      const cleanup = () => {
+        document.body.style.pointerEvents = 'auto'
+        document.body.style.overflow = 'auto'
+        
+        // Eliminar cualquier overlay atascado de Radix
+        const stuckOverlays = document.querySelectorAll(
+          '[data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="dialog-portal"], [data-slot="sheet-portal"], [data-radix-focus-guard], [class*="DialogOverlay"], [class*="SheetOverlay"]'
+        )
+        stuckOverlays.forEach(el => {
+          el.remove()
+        })
+      }
 
-  if (!isAuthenticated || !isAdmin) {
+      cleanup()
+      const timer = setTimeout(cleanup, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [pathname])
+
+  if (isLoading || !isAuthenticated || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sidebar">
         <p className="text-sidebar-foreground">Verificando permisos...</p>

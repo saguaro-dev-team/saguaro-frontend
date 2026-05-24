@@ -21,7 +21,7 @@ import { getUserOrders } from '@/app/actions/orders'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isAuthenticated, logout, updateUser } = useAuth()
+  const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth()
   
   const [formData, setFormData] = useState({
     nombres: user?.nombre || '',
@@ -54,40 +54,42 @@ export default function ProfilePage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    } else if (user) {
-      getUserAddresses(user.id).then((res) => {
-        if (res.success && res.direcciones) {
-          setDirecciones(res.direcciones)
-        }
-      })
-      getUserProfile(user.id).then((res) => {
-        if (res.success && res.profile) {
-          setFormData(prev => ({
-            ...prev,
-            nombres: res.profile.nombres || '',
-            primer_apellido: res.profile.primer_apellido || '',
-            segundo_apellido: res.profile.segundo_apellido || '',
-            rut: res.profile.rut || '',
-            telefono: res.profile.telefono || '',
-            genero: res.profile.genero || '',
-            fecha_nacimiento: res.profile.fecha_nacimiento ? new Date(res.profile.fecha_nacimiento).toISOString().split('T')[0] : ''
-          }))
-        }
-      })
-      getRegiones().then(res => {
-        if (res.success && res.regiones) {
-          setRegionesData(res.regiones)
-        }
-      })
-      getUserOrders(user.id).then(res => {
-        if (res.success && res.orders) {
-          setRealOrders(res.orders)
-        }
-      })
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login')
+      } else if (user) {
+        getUserAddresses(user.id).then((res) => {
+          if (res.success && res.direcciones) {
+            setDirecciones(res.direcciones)
+          }
+        })
+        getUserProfile(user.id).then((res) => {
+          if (res.success && res.profile) {
+            setFormData(prev => ({
+              ...prev,
+              nombres: res.profile.nombres || '',
+              primer_apellido: res.profile.primer_apellido || '',
+              segundo_apellido: res.profile.segundo_apellido || '',
+              rut: res.profile.rut || '',
+              telefono: res.profile.telefono || '',
+              genero: res.profile.genero || '',
+              fecha_nacimiento: res.profile.fecha_nacimiento ? new Date(res.profile.fecha_nacimiento).toISOString().split('T')[0] : ''
+            }))
+          }
+        })
+        getRegiones().then(res => {
+          if (res.success && res.regiones) {
+            setRegionesData(res.regiones)
+          }
+        })
+        getUserOrders(user.id).then(res => {
+          if (res.success && res.orders) {
+            setRealOrders(res.orders)
+          }
+        })
+      }
     }
-  }, [isAuthenticated, user, router])
+  }, [isLoading, isAuthenticated, user, router])
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault()

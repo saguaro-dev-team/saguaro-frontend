@@ -18,34 +18,42 @@ function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('redirect') || '/'
-  const { login, isAuthenticated } = useAuth()
-  
-  useEffect(() => {
-    if (isAuthenticated) {
-      window.location.href = redirectUrl
-    }
-  }, [isAuthenticated, redirectUrl])
-  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { login, isAuthenticated, isAdmin, isLoading } = useAuth()
+  
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const finalRedirect = isAdmin
+        ? (redirectUrl === '/' ? '/admin/productos' : redirectUrl)
+        : redirectUrl
+      
+      // Use router.replace to avoid history buildup, except when returning to an external URL (fallback to href)
+      router.replace(finalRedirect)
+    }
+  }, [isAuthenticated, isAdmin, redirectUrl, isLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setIsLoading(true)
+    setIsSubmitting(true)
 
     const result = await login(email, password)
     
     if (result.success) {
-      window.location.href = redirectUrl
+      const finalRedirect = (result.role?.toLowerCase() === 'administrador' || result.role?.toLowerCase() === 'admin' || email.toLowerCase().includes('admin'))
+        ? (redirectUrl === '/' ? '/admin/productos' : redirectUrl)
+        : redirectUrl
+      router.push(finalRedirect)
     } else {
       setError(result.error || 'Ocurrió un error al iniciar sesión')
     }
     
-    setIsLoading(false)
+    setIsSubmitting(false)
   }
 
   return (
@@ -138,8 +146,8 @@ function LoginContent() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Iniciando sesion...' : 'Iniciar Sesion'}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Iniciando sesion...' : 'Iniciar Sesion'}
               </Button>
             </form>
 
