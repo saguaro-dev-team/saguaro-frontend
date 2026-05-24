@@ -4,12 +4,48 @@ Saguaro Barefoot es una aplicación web e-commerce de calzado ergonómico y mini
 
 ---
 
+## Arquitectura General del Sistema
+
+Saguaro Barefoot está diseñado bajo una arquitectura de software moderna, desacoplada y altamente escalable, utilizando un stack tecnológico moderno de nivel empresarial:
+
+```mermaid
+graph TD
+    Client[Cliente / Navegador] -->|Next.js Router / React 19| AppRouter[Next.js App Router]
+    AppRouter -->|Server Actions / Middleware| API[Capa Lógica del Servidor]
+    API -->|Prisma ORM| DB[(Base de Datos PostgreSQL - Supabase)]
+    API -->|Supabase Storage API| CloudStorage[Almacenamiento en la Nube - Supabase Storage]
+    API -->|Local File System API| LocalStorage[Disco Local - public/zapatillas/]
+```
+
+### Componentes Clave de la Arquitectura:
+
+1. **Frontend y Lógica de Cliente (React & Next.js App Router)**:
+   - Diseñado con **Next.js (App Router)** y **React 19** para optimizar el rendimiento de la aplicación mediante la combinación eficiente de Server Components (SSR) para carga rápida e indexación SEO, y Client Components (CSR) para interactividad fluida.
+   - Modularización de componentes mediante un sistema de diseño visual responsivo desarrollado en CSS Vanilla y componentes accesibles de Radix UI.
+   - Sincronización en tiempo real de estados de sesión (login/logout) a través de múltiples pestañas activas del navegador utilizando escuchadores de eventos nativos del DOM (`storage`).
+
+2. **Capa de Negocio y Lógica del Servidor (Server Actions)**:
+   - Centralización de la lógica crítica de negocio en **Server Actions**, ejecutando de forma segura validaciones de datos sensibles del lado del servidor (como el formateo y la validación matemática de RUT chileno con el Algoritmo Módulo 11).
+   - Capa de seguridad que restringe el volumen de datos en los inputs del usuario (correos electrónicos a 100 caracteres y contraseñas a 50 caracteres) para blindar el backend contra inyecciones maliciosas o desbordamiento de memoria.
+   - Control transaccional a nivel de base de datos para compras, garantizando la consistencia exacta de inventario por variante (color y talla específicos) antes de autorizar las transacciones.
+
+3. **Persistencia e Integridad Relacional (PostgreSQL & Prisma ORM)**:
+   - Base de datos relacional robusta en **PostgreSQL**, alojada de forma administrada en la nube de **Supabase**.
+   - Capa de abstracción de datos implementada mediante **Prisma ORM**, controlando de forma declarativa el modelado relacional, las consultas optimizadas y la ejecución de migraciones en producción.
+   - Jerarquía relacional robusta e indexada para productos, modelos, variantes de color, tallas, usuarios, direcciones de despacho y pedidos de Webpay.
+
+4. **Infraestructura, Contenedores y CI/CD**:
+   - **Dockerización Completa**: Entorno de desarrollo reproducible, ágil y autocontenido mediante contenedores Docker basados en imágenes Linux Alpine de peso mínimo.
+   - **Despliegue Continuo**: Integrado nativamente con **Vercel** para automatizar el ciclo de vida del software, desplegando actualizaciones inmediatas con cada integración de código.
+
+---
+
 ## Arquitectura de Almacenamiento Híbrido
 
-Para garantizar que el proyecto funcione perfectamente tanto en el entorno de desarrollo local como en una plataforma *serverless* (como **Vercel**), se diseñó e implementó un **Sistema de Almacenamiento de Imágenes Híbrido**:
+Para garantizar que el proyecto funcione de forma óptima tanto en el entorno de desarrollo local como en una plataforma *serverless* con sistema de archivos efímero (como **Vercel**), se implementó una **Arquitectura de Almacenamiento de Imágenes Híbrida**:
 
-* **Entorno Local (Desarrollo):** El panel de administrador guarda las imágenes físicamente en la carpeta `/public/zapatillas/` del disco de tu computadora. Estas imágenes se empaquetan al realizar el despliegue a producción.
-* **Entorno Live en la Nube (Vercel):** Si agregas las credenciales de Supabase Storage en el archivo `.env`, la aplicación subirá las fotos directamente a la nube en un **Bucket público de Supabase Storage**. Esto soluciona la restricción del disco temporal de Vercel, permitiendo al administrador o al profesor subir imágenes en cualquier momento desde el sitio en vivo de forma persistentemente.
+* **Entorno de Desarrollo Local:** El panel de administración almacena los archivos cargados físicamente en la ruta `/public/zapatillas/` del disco duro local, facilitando un desarrollo rápido y sin consumo de ancho de banda de red externo.
+* **Entorno de Producción en Vivo (Vercel):** Al detectar la existencia de las variables de entorno de Supabase en el archivo `.env`, la aplicación desvía dinámicamente todas las cargas de imágenes directamente hacia un **Bucket público de Supabase Storage**. Esto soluciona la restricción de almacenamiento persistente de Vercel, permitiendo al administrador cargar imágenes de forma persistente y en tiempo real desde el sitio en producción.
 
 ---
 
@@ -26,7 +62,7 @@ El proyecto cuenta con dockerización para facilitar su despliegue reproducible 
 1. **Clonar el repositorio:**
    ```bash
    git clone <URL_DEL_REPOSITORIO>
-   cd saguaro-frontend-main
+   cd saguaro-frontend
    ```
 
 2. **Configurar las variables de entorno:**
@@ -74,10 +110,10 @@ El proyecto está diseñado bajo una arquitectura modular y ligera utilizando lo
 
 ## Despliegue de Imágenes en la Nube (Supabase Storage)
 
-Para que las subidas de imágenes del panel de administrador sean 100% permanentes e independientes de la computadora local (es decir, visibles en vivo por cualquier persona desde Vercel):
+Para que las subidas de imágenes del panel de administrador sean 100% permanentes e independientes del servidor efímero en entornos productivos:
 
 1. Ingresa a tu consola web de **Supabase**.
-2. Ve a la sección **Storage** y crea un bucket llamado `zapatillas`.
-3. Edita las políticas del bucket (Policies) y hazlo **Público** para permitir la lectura y subida de archivos de forma externa.
-4. Añade tus variables `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en tu `.env` o en el panel de variables de entorno en Vercel.
-5. **¡Listo!** El sistema detectará automáticamente la llave, redirigirá todas las subidas de archivos a la nube y tu profesor verá las fotos permanentemente desde su casa.
+2. Dirígete a la sección **Storage** y crea un bucket público llamado `zapatillas`.
+3. Configura las políticas del bucket (Policies) para permitir la lectura y escritura pública de archivos desde clientes externos autorizados.
+4. Vincula las variables de entorno `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en tu archivo `.env` o en el panel de variables de entorno de tu proveedor de hosting (como Vercel).
+5. **¡Listo!** El sistema detectará automáticamente las credenciales, redirigirá todas las cargas de archivos a la nube y garantizará la disponibilidad y visualización persistente de las imágenes de forma global en producción.
