@@ -48,17 +48,18 @@ export default function AdminDashboardPage() {
 
   const { toast } = useToast()
 
-  const loadData = async () => {
+  const loadData = async (activePeriod: string = period) => {
     setIsRefreshing(true)
     try {
+      const p = activePeriod as 'today' | 'week' | 'month' | 'quarter' | 'year'
       const [kpi, vMensuales, pVendidos, sCritico, pRecientes, vCategoria, vHora] = await Promise.all([
-        getKpiData(),
-        getVentasMensuales(),
-        getProductosVendidos(),
+        getKpiData(p),
+        getVentasMensuales(p),
+        getProductosVendidos(p),
         getStockCritico(),
-        getPedidosRecientes(),
-        getVentasPorCategoria(),
-        getVentasPorHora()
+        getPedidosRecientes(p),
+        getVentasPorCategoria(p),
+        getVentasPorHora(p)
       ])
       setData({
         kpi, ventasMensuales: vMensuales, productosVendidos: pVendidos, 
@@ -73,11 +74,11 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    loadData(period)
+  }, [period])
 
   const handleRefresh = async () => {
-    await loadData()
+    await loadData(period)
   }
 
   const exportToCSV = () => {
