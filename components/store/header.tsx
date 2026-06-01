@@ -183,7 +183,7 @@ export function Header() {
                     <Link href="/perfil">Mi Perfil</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/pedidos">Mis Pedidos</Link>
+                    <Link href="/perfil?tab=pedidos">Mis Pedidos</Link>
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>

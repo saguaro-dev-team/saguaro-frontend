@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,9 +19,21 @@ import { getUserOrders } from '@/app/actions/orders'
 
 // We will use real orders now
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab') || 'datos'
+  
   const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth()
+  
+  const [activeTab, setActiveTab] = useState(tabParam)
+
+  // Sync activeTab when the query parameter changes
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
   
   const [formData, setFormData] = useState({
     nombres: user?.nombre || '',
@@ -219,7 +231,7 @@ export default function ProfilePage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="datos" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
             <TabsTrigger value="datos" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -427,8 +439,8 @@ export default function ProfilePage() {
                         </div>
                         
                         <div className="space-y-2">
-                          {order.detalle_pedidos.map((det: any) => (
-                            <div key={det.id_detalle} className="flex justify-between text-sm">
+                          {order.detalle_pedidos.map((det: any, idx: number) => (
+                            <div key={`${det.productos?.nombre}-${det.color}-${det.talla}-${idx}`} className="flex justify-between text-sm">
                               <span>{det.cantidad}x {det.productos?.nombre} ({det.color}, {det.talla})</span>
                               <span className="text-muted-foreground">{formatPrice(det.precio_unitario * det.cantidad)}</span>
                             </div>
@@ -580,5 +592,13 @@ export default function ProfilePage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Cargando perfil...</div>}>
+      <ProfileContent />
+    </Suspense>
   )
 }

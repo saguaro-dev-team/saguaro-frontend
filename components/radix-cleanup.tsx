@@ -5,14 +5,11 @@ import { usePathname } from 'next/navigation'
 
 function cleanupRadix() {
   if (typeof document === 'undefined') return
-  document.body.style.pointerEvents = ''
+  document.body.style.pointerEvents = 'auto'
   document.body.style.overflow = ''
   document.body.removeAttribute('data-scroll-locked')
   document.body.removeAttribute('inert')
   document.documentElement.removeAttribute('data-scroll-locked')
-  document.querySelectorAll(
-    '[data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="dialog-portal"], [data-slot="sheet-portal"], [data-radix-focus-guard], [class*="DialogOverlay"], [class*="SheetOverlay"], [vaul-overlay]'
-  ).forEach((el) => el.remove())
 }
 
 export function RadixCleanup() {

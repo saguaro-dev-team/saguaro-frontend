@@ -57,8 +57,8 @@ export async function getReporteVentas(startDateStr: string, endDateStr: string)
     'ID Pedido': p.id_pedido,
     'Fecha': p.fecha_pedido.toISOString().split('T')[0],
     'Estado': p.estado,
-    'Cliente': `${p.usuario.nombre} ${p.usuario.apellido}`,
-    'Email': p.usuario.email,
+    'Cliente': `${p.usuario.nombres} ${p.usuario.primer_apellido}`,
+    'Email': p.usuario.direccion_email,
     'Total': p.total,
     'Items (Cant)': p.articulos.reduce((acc, art) => acc + art.cantidad, 0)
   }));

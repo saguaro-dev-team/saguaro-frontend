@@ -369,7 +369,6 @@ export async function updateOrderStatus(orderId: number, newStatus: string) {
         data: { estado: newStatus }
       })
     })
-
     const { revalidatePath } = await import('next/cache')
     revalidatePath('/admin/pedidos')
     revalidatePath('/perfil')

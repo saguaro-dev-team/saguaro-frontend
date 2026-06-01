@@ -103,7 +103,7 @@ export async function getVentasMensuales(period: Period = 'month'): Promise<Vent
 
   // Para "today" o "week", agrupar por día en vez de mes
   if (period === 'today') {
-    const hours = Array.from({length: 14}, (_, i) => i + 8) // 08:00 a 21:00
+    const hours = Array.from({length: 24}, (_, i) => i) // 00:00 a 23:00
     const hourMap = new Map<string, {ventas: number, pedidos: number}>()
     hours.forEach(h => hourMap.set(`${h.toString().padStart(2,'0')}:00`, { ventas: 0, pedidos: 0 }))
     pedidos.forEach(p => {

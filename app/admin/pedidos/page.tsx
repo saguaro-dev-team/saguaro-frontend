@@ -118,7 +118,6 @@ export default function AdminOrdersPage() {
     setIsDetailOpen(true)
   }
 
-
   const fetchOrders = () => {
     getAdminOrders().then(res => {
       if (res.success && res.orders) {
