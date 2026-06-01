@@ -12,11 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/lib/auth-context'
 import { getRegiones } from '@/app/actions/location'
+import { checkEmailOrRutExists } from '@/app/actions/auth'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { formatRut, validateRut } from '@/lib/utils'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+
 
 
 function RegisterContent() {
@@ -60,6 +62,76 @@ function RegisterContent() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  // Real-time validation states
+  const [emailError, setEmailError] = useState('')
+  const [isValidatingEmail, setIsValidatingEmail] = useState(false)
+  const [rutError, setRutError] = useState('')
+  const [isValidatingRut, setIsValidatingRut] = useState(false)
+
+  // Debounced Email validation
+  useEffect(() => {
+    if (!formData.email) {
+      setEmailError('')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setEmailError('Formato de correo no válido')
+      return
+    }
+
+    setEmailError('')
+    setIsValidatingEmail(true)
+    const delayDebounceFn = setTimeout(async () => {
+      const res = await checkEmailOrRutExists(formData.email, undefined)
+      if (res.exists && res.emailExists) {
+        setEmailError('Este correo electrónico ya está registrado')
+      } else {
+        setEmailError('')
+      }
+      setIsValidatingEmail(false)
+    }, 500)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [formData.email])
+
+  // Debounced RUT validation
+  useEffect(() => {
+    if (!formData.rut) {
+      setRutError('')
+      return
+    }
+
+    const cleanRut = formData.rut.replace(/[^0-9kK]/g, '')
+    if (cleanRut.length < 8) {
+      setRutError('RUT incompleto')
+      return
+    }
+
+    if (!validateRut(formData.rut)) {
+      setRutError('RUT no es válido')
+      return
+    }
+
+    setRutError('')
+    setIsValidatingRut(true)
+    const delayDebounceFn = setTimeout(async () => {
+      const res = await checkEmailOrRutExists(undefined, formData.rut)
+      if (res.exists && res.rutExists) {
+        setRutError('Este RUT ya está registrado')
+      } else {
+        setRutError('')
+      }
+      setIsValidatingRut(false)
+    }, 500)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [formData.rut])
+
+  const hasErrors = !!emailError || !!rutError || isValidatingEmail || isValidatingRut
+
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
@@ -67,6 +139,11 @@ function RegisterContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (hasErrors) {
+      setError('Por favor corrige las alertas en el formulario antes de continuar.')
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden')
@@ -89,6 +166,7 @@ function RegisterContent() {
     }
 
     setIsLoading(true)
+
 
     const result = await register({
       email: formData.email,
@@ -203,7 +281,14 @@ function RegisterContent() {
                   onChange={handleChange}
                   maxLength={100}
                   required
+                  className={emailError ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {isValidatingEmail && (
+                  <p className="text-[11px] text-muted-foreground animate-pulse">Validando disponibilidad...</p>
+                )}
+                {emailError && (
+                  <p className="text-[11px] text-destructive font-medium">{emailError}</p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -223,7 +308,14 @@ function RegisterContent() {
                     }}
                     maxLength={12}
                     required
+                    className={rutError ? 'border-destructive focus-visible:ring-destructive' : ''}
                   />
+                  {isValidatingRut && (
+                    <p className="text-[11px] text-muted-foreground animate-pulse">Validando disponibilidad...</p>
+                  )}
+                  {rutError && (
+                    <p className="text-[11px] text-destructive font-medium">{rutError}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="telefono">Teléfono</Label>
@@ -392,7 +484,7 @@ function RegisterContent() {
                 </span>
               </label>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || hasErrors}>
                 {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
             </form>

@@ -164,3 +164,33 @@ export async function loginUser(email: string, password: string) {
     return { success: false, error: 'Error interno del servidor' }
   }
 }
+
+export async function checkEmailOrRutExists(email?: string, rut?: string) {
+  try {
+    if (!email && !rut) return { exists: false }
+    
+    const conditions: any[] = []
+    if (email) conditions.push({ direccion_email: email })
+    if (rut) conditions.push({ rut })
+    
+    const user = await prisma.usuario.findFirst({
+      where: {
+        OR: conditions
+      }
+    })
+    
+    if (user) {
+      return {
+        exists: true,
+        emailExists: email ? user.direccion_email === email : false,
+        rutExists: rut ? user.rut === rut : false
+      }
+    }
+    
+    return { exists: false }
+  } catch (error) {
+    console.error('Error checking user availability:', error)
+    return { exists: false, error: 'Error al validar disponibilidad' }
+  }
+}
+

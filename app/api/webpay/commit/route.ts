@@ -32,16 +32,28 @@ async function processWebpayReturn(req: NextRequest) {
          const orderId = parseInt(tbk_orden_compra.replace('O-', ''))
          await markOrderAsFailed(orderId)
        }
-       return NextResponse.redirect(new URL('/checkout/failure?reason=timeout', req.url))
+       return NextResponse.redirect(new URL('/checkout/failure?reason=timeout', req.url), { status: 303 })
     }
 
     // User aborted payment in Transbank
     if (tbk_token && !token_ws) {
+       let orderId: number | null = null
        if (tbk_orden_compra) {
-         const orderId = parseInt(tbk_orden_compra.replace('O-', ''))
+         orderId = parseInt(tbk_orden_compra.replace('O-', ''))
+       } else {
+         // Fallback: look up the order using the Transbank token
+         const payment = await prisma.transaccion_pago.findFirst({
+           where: { token_ws: tbk_token }
+         })
+         if (payment) {
+           orderId = payment.id_pedido
+         }
+       }
+
+       if (orderId) {
          await markOrderAsFailed(orderId)
        }
-       return NextResponse.redirect(new URL(`/checkout/failure?reason=aborted`, req.url))
+       return NextResponse.redirect(new URL(`/checkout/failure?reason=aborted`, req.url), { status: 303 })
     }
 
     // Normal flow
@@ -64,18 +76,18 @@ async function processWebpayReturn(req: NextRequest) {
         })
       })
 
-      return NextResponse.redirect(new URL(`/checkout/success?order=${orderId}`, req.url))
+      return NextResponse.redirect(new URL(`/checkout/success?order=${orderId}`, req.url), { status: 303 })
     } else {
       // Payment rejected by bank
       await markOrderAsFailed(orderId)
-      return NextResponse.redirect(new URL(`/checkout/failure?reason=rejected`, req.url))
+      return NextResponse.redirect(new URL(`/checkout/failure?reason=rejected`, req.url), { status: 303 })
     }
 
   } catch (error: any) {
     console.error('Webpay Commit Error:', error)
     // If commit fails due to timeout or other Transbank API error, the user gets reason=error
     // But if the error is "Invalid token", it's a rejected state.
-    return NextResponse.redirect(new URL('/checkout/failure?reason=error', req.url))
+    return NextResponse.redirect(new URL('/checkout/failure?reason=error', req.url), { status: 303 })
   }
 }
 

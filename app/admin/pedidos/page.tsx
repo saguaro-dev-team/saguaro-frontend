@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Eye, MoreHorizontal, Package, Truck, CheckCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getAdminOrders, updateOrderStatus } from '@/app/actions/orders'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -28,6 +29,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+
 
 // Mock orders data
 const mockOrders = [
@@ -89,6 +98,7 @@ const mockOrders = [
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
   pendiente: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  pagado: { label: 'Pagado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
   preparando: { label: 'Preparando', color: 'bg-blue-100 text-blue-800', icon: Package },
   enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-800', icon: Truck },
   entregado: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
@@ -96,10 +106,42 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.C
 }
 
 export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order)
+    setIsDetailOpen(true)
+  }
+
+
+  const fetchOrders = () => {
+    getAdminOrders().then(res => {
+      if (res.success && res.orders) {
+        setOrders(res.orders)
+      }
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const handleStatusChange = async (orderIdRaw: number, newStatus: string) => {
+    const res = await updateOrderStatus(orderIdRaw, newStatus)
+    if (res.success) {
+      setOrders(current =>
+        current.map(o => o.id_raw === orderIdRaw ? { ...o, estado: newStatus } : o)
+      )
+    }
+  }
+
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.cliente.toLowerCase().includes(searchQuery.toLowerCase())
@@ -117,10 +159,10 @@ export default function AdminOrdersPage() {
 
   const getOrderStats = () => {
     return {
-      total: mockOrders.length,
-      pendiente: mockOrders.filter((o) => o.estado === 'pendiente').length,
-      preparando: mockOrders.filter((o) => o.estado === 'preparando').length,
-      enviado: mockOrders.filter((o) => o.estado === 'enviado').length,
+      total: orders.length,
+      pendiente: orders.filter((o) => o.estado === 'pendiente').length,
+      preparando: orders.filter((o) => o.estado === 'preparando').length,
+      enviado: orders.filter((o) => o.estado === 'enviado').length,
     }
   }
 
@@ -230,69 +272,229 @@ export default function AdminOrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => {
-                const status = statusConfig[order.estado]
-                const StatusIcon = status.icon
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Cargando pedidos...
+                  </TableCell>
+                </TableRow>
+              ) : filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No se encontraron pedidos.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOrders.map((order) => {
+                  const status = statusConfig[order.estado] || {
+                    label: order.estado ? order.estado.charAt(0).toUpperCase() + order.estado.slice(1) : 'Pendiente',
+                    color: 'bg-gray-100 text-gray-800',
+                    icon: Clock
+                  }
+                  const StatusIcon = status.icon
 
-                return (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <p className="font-mono font-medium">{order.id}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{order.cliente}</p>
-                        <p className="text-sm text-muted-foreground">{order.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(order.fecha).toLocaleDateString('es-CL')}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatPrice(order.total)}
-                    </TableCell>
-                    <TableCell className="text-center">{order.items}</TableCell>
-                    <TableCell>
-                      <Badge className={`${status.color} gap-1`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {status.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Acciones</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver detalles
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>Marcar como Preparando</DropdownMenuItem>
-                          <DropdownMenuItem>Marcar como Enviado</DropdownMenuItem>
-                          <DropdownMenuItem>Marcar como Entregado</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            Cancelar pedido
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <p className="font-mono font-medium">{order.id}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{order.cliente}</p>
+                          <p className="text-sm text-muted-foreground">{order.email}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 font-medium text-amber-700 dark:text-amber-500">Tel: {order.telefono}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(order.fecha).toLocaleDateString('es-CL')}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatPrice(order.total)}
+                      </TableCell>
+                      <TableCell className="text-center">{order.items}</TableCell>
+                      <TableCell>
+                        <Badge className={`${status.color} gap-1`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Acciones</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewDetails(order)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver detalles
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pendiente')}>Marcar como Pendiente</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pagado')}>Marcar como Pagado</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'preparando')}>Marcar como Preparando</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'enviado')}>Marcar como Enviado</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'entregado')}>Marcar como Entregado</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleStatusChange(order.id_raw, 'cancelado')}>
+                              Cancelar pedido
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       <div className="mt-4 text-sm text-muted-foreground">
-        Mostrando {filteredOrders.length} de {mockOrders.length} pedidos
+        Mostrando {filteredOrders.length} de {orders.length} pedidos
       </div>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center justify-between">
+              <span>Detalle de Pedido: <span className="font-mono text-primary">{selectedOrder?.id}</span></span>
+            </DialogTitle>
+            <DialogDescription>
+              Realizado el {selectedOrder ? new Date(selectedOrder.fecha).toLocaleDateString('es-CL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6 mt-4">
+              {/* Cliente y Contacto */}
+              <div className="grid gap-4 sm:grid-cols-2 bg-muted/40 p-4 rounded-lg border">
+                <div>
+                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">Comprador</h3>
+                  <p className="font-medium text-base">{selectedOrder.cliente}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{selectedOrder.email}</p>
+                  <p className="text-sm font-semibold text-primary mt-2">
+                    <a href={`tel:${selectedOrder.telefono}`} className="hover:underline flex items-center gap-1.5">
+                      📞 Llamar: {selectedOrder.telefono}
+                    </a>
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">Despacho</h3>
+                  {selectedOrder.direccion ? (
+                    <div className="text-sm space-y-1">
+                      <p className="font-medium">{selectedOrder.direccion.calle} {selectedOrder.direccion.numero}</p>
+                      {selectedOrder.direccion.departamento && (
+                        <p>Dpto/Block: {selectedOrder.direccion.departamento}</p>
+                      )}
+                      {selectedOrder.direccion.detalles && (
+                        <p className="text-xs text-muted-foreground italic">Nota: {selectedOrder.direccion.detalles}</p>
+                      )}
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">{selectedOrder.direccion.comuna}, {selectedOrder.direccion.region}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No se especificó dirección o retiro en tienda.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Detalle de Productos */}
+              <div>
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3">Productos</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead>Producto</TableHead>
+                        <TableHead className="text-center">Variante</TableHead>
+                        <TableHead className="text-center">Cant.</TableHead>
+                        <TableHead className="text-right">Precio</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedOrder.articulos?.map((art: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{art.nombre}</TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">
+                            Color: {art.color} <br /> Talla: {art.talla}
+                          </TableCell>
+                          <TableCell className="text-center">{art.cantidad}</TableCell>
+                          <TableCell className="text-right">{formatPrice(art.precio)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatPrice(art.precio * art.cantidad)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Total y Resumen */}
+              <div className="flex flex-col items-end gap-2 border-t pt-4">
+                <div className="flex justify-between w-64 text-sm text-muted-foreground">
+                  <span>Subtotal productos:</span>
+                  <span>{formatPrice(selectedOrder.articulos?.reduce((acc: number, cur: any) => acc + (cur.precio * cur.cantidad), 0) || 0)}</span>
+                </div>
+                <div className="flex justify-between w-64 text-sm text-muted-foreground">
+                  <span>Envío:</span>
+                  <span>
+                    {selectedOrder.total >= 50000 && (selectedOrder.total - (selectedOrder.articulos?.reduce((acc: number, cur: any) => acc + (cur.precio * cur.cantidad), 0) || 0)) <= 0
+                      ? 'Gratis'
+                      : formatPrice(Math.max(0, selectedOrder.total - (selectedOrder.articulos?.reduce((acc: number, cur: any) => acc + (cur.precio * cur.cantidad), 0) || 0)))}
+                  </span>
+                </div>
+                <div className="flex justify-between w-64 font-bold text-base border-t pt-2 mt-1">
+                  <span>Total Pedido:</span>
+                  <span className="text-primary">{formatPrice(selectedOrder.total)}</span>
+                </div>
+              </div>
+
+              {/* Estado de Pedido */}
+              <div className="flex items-center justify-between border-t pt-4">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">Estado actual</p>
+                  <div className="mt-1">
+                    <Badge className={`${statusConfig[selectedOrder.estado]?.color || 'bg-gray-100 text-gray-800'} text-sm gap-1`}>
+                      {statusConfig[selectedOrder.estado]?.label || selectedOrder.estado}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-semibold text-right">Cambiar Estado</p>
+                  <Select
+                    value={selectedOrder.estado}
+                    onValueChange={(val) => {
+                      handleStatusChange(selectedOrder.id_raw, val)
+                      setSelectedOrder((prev: any) => ({ ...prev, estado: val }))
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Cambiar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="pagado">Pagado</SelectItem>
+                      <SelectItem value="preparando">Preparando</SelectItem>
+                      <SelectItem value="enviado">Enviado</SelectItem>
+                      <SelectItem value="entregado">Entregado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+

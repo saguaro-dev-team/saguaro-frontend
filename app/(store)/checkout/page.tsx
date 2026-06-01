@@ -144,6 +144,10 @@ export default function CheckoutPage() {
   }, [webpayData])
 
   const handleSubmit = async () => {
+    if (!user?.id) {
+      setCheckoutError('Debes iniciar sesión para completar la compra.')
+      return
+    }
     setIsProcessing(true)
     setCheckoutError('')
     
@@ -171,6 +175,7 @@ export default function CheckoutPage() {
     }
   }
 
+  // Bloquear usuarios no autenticados — mostrar mensaje de login inmediatamente
   if (!mounted) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
@@ -181,7 +186,23 @@ export default function CheckoutPage() {
   }
 
   if (!isAuthenticated) {
-    return null
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-16 px-4 text-center">
+        <ShoppingBag className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Debes iniciar sesión para comprar</h1>
+        <p className="text-muted-foreground mb-6">
+          Crea una cuenta o inicia sesión para continuar con tu compra.
+        </p>
+        <div className="flex gap-3">
+          <Button asChild>
+            <Link href="/login?redirect=/checkout">Iniciar Sesión</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/registro?redirect=/checkout">Crear Cuenta</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (webpayData) {

@@ -205,3 +205,178 @@ export async function createOrder(data: {
     return { success: false, error: error.message || 'Error al procesar el pedido' };
   }
 }
+
+async function cleanupExpiredPendingOrders() {
+  try {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    // Find all pending orders older than 7 days
+    const expiredOrders = await prisma.pedido.findMany({
+      where: {
+        estado: 'pendiente',
+        fecha_pedido: {
+          lt: sevenDaysAgo
+        }
+      },
+      include: {
+        articulos: true
+      }
+    })
+
+    if (expiredOrders.length === 0) return
+
+    console.log(`[Pending Cleanup] Cancelling ${expiredOrders.length} orders older than 7 days.`)
+
+    await prisma.$transaction(async (tx) => {
+      for (const order of expiredOrders) {
+        await tx.pedido.update({
+          where: { id_pedido: order.id_pedido },
+          data: { estado: 'cancelado' }
+        })
+
+        await tx.transaccion_pago.updateMany({
+          where: { id_pedido: order.id_pedido },
+          data: { estado_pago: 'Rechazado' }
+        })
+
+        for (const art of order.articulos) {
+          await tx.producto.update({
+            where: { id_producto: art.id_producto },
+            data: { stock: { increment: art.cantidad } }
+          })
+        }
+      }
+    })
+  } catch (e) {
+    console.error('Error during expired pending orders cleanup:', e)
+  }
+}
+
+export async function getAdminOrders() {
+  try {
+    // Run the self-healing pending orders cleanup first
+    await cleanupExpiredPendingOrders()
+
+    const orders = await prisma.pedido.findMany({
+      include: {
+        usuario: true,
+        articulos: {
+          include: {
+            producto: {
+              include: {
+                modelo: true,
+                color: true,
+                talla: true
+              }
+            }
+          }
+        },
+        direccion: {
+          include: {
+            comuna: {
+              include: {
+                region: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { fecha_pedido: 'desc' }
+    })
+    
+    const formattedOrders = orders.map(o => ({
+      id: `SAG-${String(o.id_pedido).padStart(8, '0')}`,
+      id_raw: o.id_pedido,
+      cliente: o.usuario ? `${o.usuario.nombres} ${o.usuario.primer_apellido} ${o.usuario.segundo_apellido || ''}`.trim() : 'Invitado',
+      email: o.usuario ? o.usuario.direccion_email : 'invitado@email.com',
+      telefono: o.usuario ? o.usuario.telefono : 'No registrado',
+      fecha: o.fecha_pedido.toISOString().split('T')[0],
+      total: o.total,
+      items: o.articulos.reduce((acc, a) => acc + a.cantidad, 0),
+      estado: o.estado,
+      direccion: o.direccion ? {
+        calle: o.direccion.calle,
+        numero: o.direccion.numero || '',
+        departamento: o.direccion.departamento || '',
+        detalles: o.direccion.detalles || '',
+        comuna: o.direccion.comuna.nombre,
+        region: o.direccion.comuna.region.nombre
+      } : null,
+      articulos: o.articulos.map(a => ({
+        nombre: a.producto.modelo.nombre_modelo,
+        color: a.producto.color.nombre_color,
+        talla: a.producto.talla.nombre_talla,
+        cantidad: a.cantidad,
+        precio: a.precio
+      }))
+    }))
+    
+    return { success: true, orders: formattedOrders }
+  } catch (error: any) {
+    console.error('Error al obtener pedidos para admin:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function updateOrderStatus(orderId: number, newStatus: string) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Fetch the old status first to check if we are transitioning to/from canceled
+      const oldOrder = await tx.pedido.findUnique({
+        where: { id_pedido: orderId },
+        include: { articulos: true }
+      })
+
+      if (!oldOrder) {
+        throw new Error('Pedido no encontrado')
+      }
+
+      // If transition is to canceled, and it wasn't canceled already, restore stock
+      if (newStatus === 'cancelado' && oldOrder.estado !== 'cancelado') {
+        // Cancel payments
+        await tx.transaccion_pago.updateMany({
+          where: { id_pedido: orderId },
+          data: { estado_pago: 'Rechazado' }
+        })
+
+        // Restore stock
+        for (const art of oldOrder.articulos) {
+          await tx.producto.update({
+            where: { id_producto: art.id_producto },
+            data: { stock: { increment: art.cantidad } }
+          })
+        }
+      } 
+      // If transitioning FROM canceled to something else (e.g. back to pendiente/pagado), deduct stock again
+      else if (oldOrder.estado === 'cancelado' && newStatus !== 'cancelado') {
+        for (const art of oldOrder.articulos) {
+          const product = await tx.producto.findUnique({
+            where: { id_producto: art.id_producto }
+          })
+          if (!product || product.stock < art.cantidad) {
+            throw new Error(`Stock insuficiente para restaurar el pedido (Producto ID: ${art.id_producto})`)
+          }
+          await tx.producto.update({
+            where: { id_producto: art.id_producto },
+            data: { stock: { decrement: art.cantidad } }
+          })
+        }
+      }
+
+      await tx.pedido.update({
+        where: { id_pedido: orderId },
+        data: { estado: newStatus }
+      })
+    })
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/admin/pedidos')
+    revalidatePath('/perfil')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error al actualizar estado del pedido:', error)
+    return { success: false, error: error.message }
+  }
+}
+
