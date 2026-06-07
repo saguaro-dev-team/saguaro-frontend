@@ -50,6 +50,7 @@ import { getAllProducts } from '@/app/actions/products'
 import { createProduct, updateProductFull, toggleProductStatus, getProductVariants, getColorsMap, updateColorsMap, uploadProductImage } from '@/app/actions/admin'
 import { getColores } from '@/app/actions/location'
 import type { Product } from '@/lib/store-types'
+import { useAuth } from '@/lib/auth-context'
 
 const categoryNames: Record<string, string> = {
   hombre: 'Hombre',
@@ -58,6 +59,7 @@ const categoryNames: Record<string, string> = {
 }
 
 export default function AdminProductsPage() {
+  const { user } = useAuth()
   const [dbProducts, setDbProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -261,10 +263,16 @@ export default function AdminProductsPage() {
     }
 
     let res
+    const adminUser = user ? {
+      id: user.id,
+      nombre: `${user.nombre} ${user.apellido}`.trim(),
+      email: user.email
+    } : undefined
+
     if (isEditing && selectedProductId) {
-      res = await updateProductFull(selectedProductId, dataToSend)
+      res = await updateProductFull(selectedProductId, dataToSend, adminUser)
     } else {
-      res = await createProduct(dataToSend)
+      res = await createProduct(dataToSend, adminUser)
     }
 
     if (res.success) {

@@ -46,9 +46,37 @@ export function CartSheet() {
                     className="flex gap-4 rounded-lg border p-3"
                   >
                     <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <ShoppingBag className="h-8 w-8" />
-                      </div>
+                      {(() => {
+                        const { producto, color } = item
+                        let activeImage = '/placeholder.jpg'
+                        if (color && producto.imagenesPorColor) {
+                          const activeColorLower = color.toLowerCase().trim()
+                          const matchingKey = Object.keys(producto.imagenesPorColor).find(
+                            key => key.toLowerCase().trim() === activeColorLower
+                          )
+                          if (matchingKey) {
+                            const imagesForColor = producto.imagenesPorColor[matchingKey]
+                            if (imagesForColor && imagesForColor.length > 0) {
+                              activeImage = imagesForColor[0]
+                            }
+                          }
+                        }
+                        if (activeImage === '/placeholder.jpg' && producto.imagenes && producto.imagenes.length > 0) {
+                          activeImage = producto.imagenes[0]
+                        }
+
+                        return activeImage && activeImage !== '/placeholder.jpg' ? (
+                          <img
+                            src={activeImage}
+                            alt={producto.nombre}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <ShoppingBag className="h-8 w-8" />
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     <div className="flex flex-1 flex-col">

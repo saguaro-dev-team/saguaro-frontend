@@ -7,7 +7,8 @@ import {
   Users, 
   TrendingUp,
   AlertTriangle,
-  Package
+  Package,
+  Layers
 } from "lucide-react"
 import type { KPIData } from "@/lib/types"
 
@@ -62,6 +63,14 @@ export function KPICards({ data }: KPICardsProps) {
       trendUp: true
     },
     {
+      title: "Variantes de Calzado",
+      value: formatNumber(data.totalVariantes),
+      description: "Tallas y colores activos",
+      icon: Layers,
+      trend: "Total en catálogo",
+      trendUp: true
+    },
+    {
       title: "Tasa de Conversión",
       value: `${data.tasaConversion}%`,
       description: "Visitas a compras",
@@ -81,7 +90,7 @@ export function KPICards({ data }: KPICardsProps) {
   ]
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
       {kpis.map((kpi) => (
         <Card key={kpi.title} className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

@@ -157,11 +157,12 @@ export default function AdminOrdersPage() {
   }
 
   const getOrderStats = () => {
+    const activeOrders = orders.filter((o) => o.estado !== 'cancelado')
     return {
-      total: orders.length,
-      pendiente: orders.filter((o) => o.estado === 'pendiente').length,
-      preparando: orders.filter((o) => o.estado === 'preparando').length,
-      enviado: orders.filter((o) => o.estado === 'enviado').length,
+      total: activeOrders.length,
+      pendiente: activeOrders.filter((o) => o.estado === 'pendiente').length,
+      preparando: activeOrders.filter((o) => o.estado === 'pagado' || o.estado === 'preparando').length,
+      enviado: activeOrders.filter((o) => o.estado === 'enviado').length,
     }
   }
 
@@ -247,6 +248,7 @@ export default function AdminOrdersPage() {
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="pendiente">Pendiente</SelectItem>
+            <SelectItem value="pagado">Pagado</SelectItem>
             <SelectItem value="preparando">Preparando</SelectItem>
             <SelectItem value="enviado">Enviado</SelectItem>
             <SelectItem value="entregado">Entregado</SelectItem>

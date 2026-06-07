@@ -111,3 +111,80 @@ export async function markMessageAsRead(id: string) {
         return { success: false };
     }
 }
+
+export async function replyToMessage(id: string, replyText: string) {
+  try {
+    let mensajes = await getContactMessages()
+    const index = mensajes.findIndex((m: any) => m.id === id)
+    if (index !== -1) {
+      mensajes[index].leido = true
+      mensajes[index].respondido = true
+      mensajes[index].respuesta = replyText
+      mensajes[index].fecha_respuesta = new Date().toISOString()
+      
+      fs.writeFileSync(mensajesFilePath, JSON.stringify(mensajes, null, 2), 'utf8')
+
+      // Enviar correo real o simular según configuración SMTP en .env
+      const smtpHost = process.env.SMTP_HOST
+      const smtpPort = process.env.SMTP_PORT
+      const smtpUser = process.env.SMTP_USER
+      const smtpPass = process.env.SMTP_PASS
+      const smtpFrom = process.env.SMTP_FROM || 'Saguaro Chile <contacto@saguaro.cl>'
+
+      const getMotivoLabelText = (m: string) => {
+        switch (m) {
+          case 'soporte': return 'Soporte / Pedido'
+          case 'tallas': return 'Dudas Tallas'
+          case 'trabaja': return 'Postulación Trabajo'
+          case 'mayorista': return 'Mayorista / Colaboración'
+          default: return 'Otro Motivo'
+        }
+      }
+
+      if (smtpHost && smtpPort && smtpUser && smtpPass) {
+        const nodemailer = await import('nodemailer')
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: parseInt(smtpPort),
+          secure: parseInt(smtpPort) === 465, // true para puerto 465, false para otros como 587
+          auth: {
+            user: smtpUser,
+            password: smtpPass,
+          },
+        } as any)
+
+        const motivoLabel = getMotivoLabelText(mensajes[index].motivo)
+        await transporter.sendMail({
+          from: smtpFrom,
+          to: mensajes[index].email,
+          subject: `RE: Consulta a Saguaro Chile - Motivo: ${motivoLabel}`,
+          text: replyText,
+        })
+
+        console.log(`[SMTP EMAIL SENT] Correo real enviado con éxito desde ${smtpFrom} a ${mensajes[index].email}`)
+      } else {
+        // Fallback: Simulación de envío de correo en consola si no hay SMTP configurado
+        console.log('==================================================')
+        console.log('📧 [SIMULACIÓN CORREO ELECTRÓNICO] - RESPUESTA CONTACTO')
+        console.log(`De: ${smtpFrom}`)
+        console.log(`Para: ${mensajes[index].nombre} <${mensajes[index].email}>`)
+        console.log(`Asunto: RE: Consulta a Saguaro Chile - Motivo: ${getMotivoLabelText(mensajes[index].motivo)}`)
+        console.log(`Fecha: ${new Date().toLocaleString('es-CL')}`)
+        console.log('--------------------------------------------------')
+        console.log(`Hola ${mensajes[index].nombre},`)
+        console.log(replyText)
+        console.log('--------------------------------------------------')
+        console.log('Cordialmente,')
+        console.log('Equipo Saguaro Chile')
+        console.log('==================================================')
+      }
+
+      revalidatePath('/admin/mensajes')
+      return { success: true }
+    }
+    return { success: false, error: 'Mensaje no encontrado' }
+  } catch (error: any) {
+    console.error("Error al responder mensaje:", error)
+    return { success: false, error: error.message }
+  }
+}

@@ -393,3 +393,18 @@ model proveedor {
   productos producto[]
 }
 
+model auditoria_stock {
+  id_auditoria    Int      @id @default(autoincrement())
+  id_usuario      Int
+  nombre_usuario  String   @db.VarChar(100)
+  email_usuario   String   @db.VarChar(100)
+  fecha_cambio    DateTime @default(now()) @db.Timestamp(6)
+  accion          String   @db.VarChar(50) // "AGREGAR", "RETIRAR", "MODIFICAR", "CREAR"
+  sku_producto    String   @db.VarChar(50)
+  nombre_producto String   @default("Desconocido") @db.VarChar(255)
+  detalles        String   @db.Text
+  stock_anterior  Int
+  stock_nuevo     Int
+}
+
+

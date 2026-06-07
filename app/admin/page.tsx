@@ -269,7 +269,8 @@ export default function AdminDashboardPage() {
       {/* KPI Cards */}
       <KPICards data={data.kpi || {
         ticketPromedio: 0, totalVentas: 0, totalPedidos: 0, 
-        clientesRegistrados: 0, tasaConversion: 0, productosConStockCritico: 0
+        clientesRegistrados: 0, tasaConversion: 0, productosConStockCritico: 0,
+        totalVariantes: 0
       }} />
 
       {/* Charts Row 1 */}

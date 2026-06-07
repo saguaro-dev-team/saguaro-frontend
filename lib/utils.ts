@@ -51,3 +51,19 @@ export function validateRut(rut: string): boolean {
   // Validar que el dígito verificador sea un número o la letra K
   return /^[0-9K]$/.test(dv);
 }
+
+export function cleanChileanPhone(phone: string): string {
+  if (!phone) return ''
+  // Eliminar cualquier caracter no numérico
+  let cleaned = phone.replace(/[^0-9]/g, '')
+  // Si empieza con 56 y tiene 11 dígitos (56 9 XXXX XXXX), quitamos el 56
+  if (cleaned.startsWith('56') && cleaned.length === 11) {
+    cleaned = cleaned.substring(2)
+  }
+  // Si empieza con 56 y tiene 10 dígitos (56 X XXXX XXXX), quitamos el 56
+  else if (cleaned.startsWith('56') && cleaned.length === 10) {
+    cleaned = cleaned.substring(2)
+  }
+  // Retornar los últimos 9 dígitos
+  return cleaned.slice(-9)
+}

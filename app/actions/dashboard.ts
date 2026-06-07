@@ -59,12 +59,28 @@ export async function getKpiData(period: Period = 'month'): Promise<KPIData> {
   const ticketPromedio = totalPedidos > 0 ? Math.round(totalVentas / totalPedidos) : 0
   
   // Clientes registrados: siempre total histórico (no filtrar por período)
+  // Excluimos a los administradores (aquellos con rol 'admin')
   const clientes = await prisma.usuario.count({
-    where: { id_rol: 1 } 
+    where: {
+      OR: [
+        { id_rol: null },
+        {
+          rol: {
+            nombre_rol: {
+              not: 'admin'
+            }
+          }
+        }
+      ]
+    }
   })
   
   const criticos = await prisma.producto.count({
     where: { stock: { lt: 10 }, modelo: { activo: true } }
+  })
+
+  const totalVariantes = await prisma.producto.count({
+    where: { modelo: { activo: true } }
   })
 
   return {
@@ -73,7 +89,8 @@ export async function getKpiData(period: Period = 'month'): Promise<KPIData> {
     totalPedidos,
     clientesRegistrados: clientes,
     tasaConversion: 2.5, 
-    productosConStockCritico: criticos
+    productosConStockCritico: criticos,
+    totalVariantes
   }
 }
 
@@ -278,7 +295,10 @@ export async function getPedidosRecientes(period: Period = 'month') {
   const pedidos = await prisma.pedido.findMany({
     take: 10,
     orderBy: { fecha_pedido: 'desc' },
-    where: { fecha_pedido: { gte: dateFrom } },
+    where: { 
+      fecha_pedido: { gte: dateFrom },
+      estado: { not: 'cancelado' }
+    },
     include: { usuario: true }
   })
 

@@ -30,7 +30,7 @@ async function processWebpayReturn(req: NextRequest) {
     if (!token_ws && !tbk_token) {
        if (tbk_orden_compra) {
          const orderId = parseInt(tbk_orden_compra.replace('O-', ''))
-         await markOrderAsFailed(orderId)
+         await cancelOrderAndRestoreStock(orderId)
        }
        return NextResponse.redirect(new URL('/checkout/failure?reason=timeout', req.url), { status: 303 })
     }
@@ -51,7 +51,7 @@ async function processWebpayReturn(req: NextRequest) {
        }
 
        if (orderId) {
-         await markOrderAsFailed(orderId)
+         await cancelOrderAndRestoreStock(orderId)
        }
        return NextResponse.redirect(new URL(`/checkout/failure?reason=aborted`, req.url), { status: 303 })
     }
@@ -79,14 +79,13 @@ async function processWebpayReturn(req: NextRequest) {
       return NextResponse.redirect(new URL(`/checkout/success?order=${orderId}`, req.url), { status: 303 })
     } else {
       // Payment rejected by bank
-      await markOrderAsFailed(orderId)
+      await cancelOrderAndRestoreStock(orderId)
       return NextResponse.redirect(new URL(`/checkout/failure?reason=rejected`, req.url), { status: 303 })
     }
 
   } catch (error: any) {
     console.error('Webpay Commit Error:', error)
     // If commit fails due to timeout or other Transbank API error, the user gets reason=error
-    // But if the error is "Invalid token", it's a rejected state.
     return NextResponse.redirect(new URL('/checkout/failure?reason=error', req.url), { status: 303 })
   }
 }
@@ -99,30 +98,44 @@ export async function GET(req: NextRequest) {
   return processWebpayReturn(req)
 }
 
-async function markOrderAsFailed(orderId: number) {
+async function cancelOrderAndRestoreStock(orderId: number) {
   if (!orderId || isNaN(orderId)) return
 
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.pedido.update({
+      // 1. Fetch the order details
+      const order = await tx.pedido.findUnique({
         where: { id_pedido: orderId },
-        data: { estado: 'cancelado' }
+        include: { articulos: true }
       })
 
-      await tx.transaccion_pago.updateMany({
-        where: { id_pedido: orderId },
-        data: { estado_pago: 'Rechazado' }
-      })
+      if (!order) return
 
-      const articulos = await tx.articulo_pedido.findMany({ where: { id_pedido: orderId } })
-      for (const art of articulos) {
-        await tx.producto.update({
-          where: { id_producto: art.id_producto },
-          data: { stock: { increment: art.cantidad } }
+      // Only cancel if it's not already canceled
+      if (order.estado !== 'cancelado') {
+        // Update order status to 'cancelado'
+        await tx.pedido.update({
+          where: { id_pedido: orderId },
+          data: { estado: 'cancelado' }
         })
+
+        // Update payment transaction status to 'Rechazado'
+        await tx.transaccion_pago.updateMany({
+          where: { id_pedido: orderId },
+          data: { estado_pago: 'Rechazado' }
+        })
+
+        // Restore stock for all articles in the order
+        for (const art of order.articulos) {
+          await tx.producto.update({
+            where: { id_producto: art.id_producto },
+            data: { stock: { increment: art.cantidad } }
+          })
+        }
+        console.log(`[Webpay Return] Order ${orderId} was cancelled and stock restored immediately because the user aborted or transaction failed.`)
       }
     })
   } catch (e) {
-    console.error('Failed to mark order as failed / restore stock:', e)
+    console.error('Failed to cancel order and restore stock:', e)
   }
 }

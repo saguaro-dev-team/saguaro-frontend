@@ -1,16 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
+import { useCart } from '@/lib/cart-context'
 
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get('order')
   const { isAuthenticated } = useAuth()
+  const { clearCart } = useCart()
+
+  useEffect(() => {
+    clearCart()
+  }, [clearCart])
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center py-16 px-4">

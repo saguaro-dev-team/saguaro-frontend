@@ -79,7 +79,7 @@ export async function getProductVariants(modelId: string) {
   }
 }
 
-export async function updateProductFull(id: string, data: any) {
+export async function updateProductFull(id: string, data: any, adminUser?: any) {
   try {
     console.log(`[updateProductFull] Actualizando Modelo ID: ${id}`, data)
     
@@ -112,19 +112,75 @@ export async function updateProductFull(id: string, data: any) {
     // 3. Si se enviaron stocks por variante específicos, los actualizamos uno a uno
     if (data.variantsStock && Array.isArray(data.variantsStock)) {
       for (const v of data.variantsStock) {
-        await prisma.producto.update({
-          where: { id_producto: parseInt(v.id_producto) },
-          data: { stock: parseInt(v.stock) || 0 }
+        const id_producto = parseInt(v.id_producto)
+        const newStock = parseInt(v.stock) || 0
+
+        const originalVariant = await prisma.producto.findUnique({
+          where: { id_producto },
+          include: { color: true, talla: true, modelo: true }
         })
+
+        const oldStock = originalVariant ? originalVariant.stock : 0
+        const diff = newStock - oldStock
+
+        if (diff !== 0) {
+          await prisma.producto.update({
+            where: { id_producto },
+            data: { stock: newStock }
+          })
+
+          if (adminUser && originalVariant) {
+            const action = diff > 0 ? 'AGREGAR' : 'RETIRAR'
+            const details = `Se actualizó stock de la variante (Color: ${originalVariant.color.nombre_color}, Talla: ${originalVariant.talla.nombre_talla}) de ${oldStock} a ${newStock} (Diferencia: ${diff > 0 ? '+' : ''}${diff} unidades)`
+            
+            const { logStockChange } = await import('./auditoria')
+            await logStockChange({
+              adminUser,
+              accion: action,
+              sku: originalVariant.codigo_sku,
+              nombreProducto: originalVariant.modelo.nombre_modelo || data.nombre || 'Desconocido',
+              detalles: details,
+              stockAnterior: oldStock,
+              stockNuevo: newStock
+            })
+          }
+        }
       }
     } else {
       // Si el admin envió un stock específico y solo hay una variante, lo actualizamos (retrocompatibilidad)
       const variantsCount = await prisma.producto.count({ where: { id_modelo } })
       if (variantsCount === 1) {
-        await prisma.producto.updateMany({
+        const singleProduct = await prisma.producto.findFirst({
           where: { id_modelo },
-          data: { stock }
+          include: { color: true, talla: true, modelo: true }
         })
+        if (singleProduct) {
+          const oldStock = singleProduct.stock
+          const newStock = stock
+          const diff = newStock - oldStock
+          if (diff !== 0) {
+            await prisma.producto.updateMany({
+              where: { id_modelo },
+              data: { stock: newStock }
+            })
+
+            if (adminUser) {
+              const action = diff > 0 ? 'AGREGAR' : 'RETIRAR'
+              const details = `Se actualizó stock del producto (Color: ${singleProduct.color.nombre_color}, Talla: ${singleProduct.talla.nombre_talla}) de ${oldStock} a ${newStock} (Diferencia: ${diff > 0 ? '+' : ''}${diff} unidades)`
+              
+              const { logStockChange } = await import('./auditoria')
+              await logStockChange({
+                adminUser,
+                accion: action,
+                sku: singleProduct.codigo_sku,
+                nombreProducto: singleProduct.modelo.nombre_modelo || data.nombre || 'Desconocido',
+                detalles: details,
+                stockAnterior: oldStock,
+                stockNuevo: newStock
+              })
+            }
+          }
+        }
       }
     }
 
@@ -156,6 +212,7 @@ export async function updateProductFull(id: string, data: any) {
 
           if (!existingVariant) {
             const sku = `SAG-${id_modelo}-${color.id_color}-${talla.id_talla}`;
+            const initialStock = 10;
             await prisma.producto.create({
               data: {
                 id_modelo,
@@ -163,9 +220,26 @@ export async function updateProductFull(id: string, data: any) {
                 id_talla: talla.id_talla,
                 codigo_sku: sku,
                 precio: precio,
-                stock: 10, // Stock inicial por defecto
+                stock: initialStock, // Stock inicial por defecto
               }
             })
+
+            if (adminUser) {
+              const existingModel = await prisma.modelo.findUnique({
+                where: { id_modelo }
+              })
+              const modelName = existingModel?.nombre_modelo || data.nombre || 'Desconocido'
+              const { logStockChange } = await import('./auditoria')
+              await logStockChange({
+                adminUser,
+                accion: 'CREAR',
+                sku,
+                nombreProducto: modelName,
+                detalles: `Creación de variante (Color: ${cName}, Talla: ${tName}) con stock inicial de ${initialStock} unidades`,
+                stockAnterior: 0,
+                stockNuevo: initialStock
+              })
+            }
           }
         }
       }
@@ -218,7 +292,7 @@ export async function updateProductFull(id: string, data: any) {
   }
 }
 
-export async function createProduct(data: any) {
+export async function createProduct(data: any, adminUser?: any) {
   try {
     const precio = parseInt(data.precio_normal)
     const stockTotal = parseInt(data.stock) || 0
@@ -273,6 +347,19 @@ export async function createProduct(data: any) {
             stock: stockPorVariante,
           }
         })
+
+        if (adminUser) {
+          const { logStockChange } = await import('./auditoria')
+          await logStockChange({
+            adminUser,
+            accion: 'CREAR',
+            sku,
+            nombreProducto: modelo.nombre_modelo || data.nombre || 'Desconocido',
+            detalles: `Creación de producto nuevo "${modelo.nombre_modelo || data.nombre}" - Variante (Color: ${cName}, Talla: ${tName}) con stock inicial de ${stockPorVariante} unidades`,
+            stockAnterior: 0,
+            stockNuevo: stockPorVariante
+          })
+        }
       }
     }
 
@@ -434,12 +521,34 @@ export async function updateUserRole(id: number, nuevoRol: string) {
   }
 }
 
-export async function addStockToProduct(id_producto: number, amount: number) {
+export async function addStockToProduct(id_producto: number, amount: number, adminUser?: any) {
   try {
+    const originalProduct = await prisma.producto.findUnique({
+      where: { id_producto },
+      include: { color: true, talla: true, modelo: true }
+    })
+    const oldStock = originalProduct ? originalProduct.stock : 0
+
     const updated = await prisma.producto.update({
       where: { id_producto },
       data: { stock: { increment: amount } }
     });
+
+    if (adminUser && originalProduct) {
+      const { logStockChange } = await import('./auditoria')
+      const action = amount > 0 ? 'AGREGAR' : 'RETIRAR'
+      const details = `Se modificó stock de la variante (Color: ${originalProduct.color.nombre_color}, Talla: ${originalProduct.talla.nombre_talla}) de ${oldStock} a ${updated.stock} (Diferencia: ${amount > 0 ? '+' : ''}${amount} unidades)`
+      await logStockChange({
+        adminUser,
+        accion: action,
+        sku: originalProduct.codigo_sku,
+        nombreProducto: originalProduct.modelo.nombre_modelo,
+        detalles: details,
+        stockAnterior: oldStock,
+        stockNuevo: updated.stock
+      })
+    }
+
     revalidatePath('/admin');
     revalidatePath('/admin/productos');
     return { success: true, stock: updated.stock };

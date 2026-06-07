@@ -333,7 +333,7 @@ export default function AdminClientesPage() {
                     <div className="grid gap-4">
                         {selectedUser.direcciones?.length > 0 ? (
                             selectedUser.direcciones.map((dir: any) => (
-                                <div key={dir.id_direccion} className="p-4 rounded-2xl border bg-white dark:bg-zinc-950 shadow-sm flex items-start gap-4">
+                                <div key={`${dir.id_usuario}-${dir.id_comuna}-${dir.id_direccion}`} className="p-4 rounded-2xl border bg-white dark:bg-zinc-950 shadow-sm flex items-start gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
                                         <MapPin className="w-5 h-5 text-primary" />
                                     </div>

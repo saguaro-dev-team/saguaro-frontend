@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getUserAddresses, addAddress, updateUserProfile, getUserProfile } from '@/app/actions/profile'
 import { getRegiones } from '@/app/actions/location'
 import { getUserOrders } from '@/app/actions/orders'
+import { cleanChileanPhone } from '@/lib/utils'
 
 // We will use real orders now
 
@@ -41,7 +42,7 @@ function ProfileContent() {
     segundo_apellido: '',
     email: user?.email || '',
     rut: '',
-    telefono: '',
+    telefono: user?.telefono ? cleanChileanPhone(user.telefono) : '',
     genero: '',
     fecha_nacimiento: ''
   })
@@ -83,7 +84,7 @@ function ProfileContent() {
               primer_apellido: res.profile.primer_apellido || '',
               segundo_apellido: res.profile.segundo_apellido || '',
               rut: res.profile.rut || '',
-              telefono: res.profile.telefono || '',
+              telefono: res.profile.telefono ? cleanChileanPhone(res.profile.telefono) : '',
               genero: res.profile.genero || '',
               fecha_nacimiento: res.profile.fecha_nacimiento ? new Date(res.profile.fecha_nacimiento).toISOString().split('T')[0] : ''
             }))
@@ -350,7 +351,11 @@ function ProfileContent() {
                         setFormData({ ...formData, [e.target.name]: val })
                       }}
                       maxLength={9}
+                      placeholder="912345678"
                     />
+                    <p className="text-[11px] text-muted-foreground">
+                      Ingresa 9 dígitos, comenzando por el 9 (ej: 912345678).
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>

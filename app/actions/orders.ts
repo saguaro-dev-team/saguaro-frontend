@@ -79,13 +79,36 @@ export async function createOrder(data: {
   paymentMethod: string;
 }) {
   try {
+    // Clean up any expired pending orders first to release their stock
+    await cleanupExpiredPendingOrders();
+
     let user_id: number;
     if (data.userId) {
       user_id = parseInt(data.userId);
+      // Actualizar el teléfono y datos de contacto en el perfil del usuario activo
+      await prisma.usuario.update({
+        where: { id_usuario: user_id },
+        data: {
+          nombres: data.formData.nombres,
+          primer_apellido: data.formData.primer_apellido,
+          segundo_apellido: data.formData.segundo_apellido || undefined,
+          telefono: data.formData.telefono
+        }
+      });
     } else {
       const existingUser = await prisma.usuario.findUnique({ where: { direccion_email: data.formData.email } });
       if (existingUser) {
         user_id = existingUser.id_usuario;
+        // Actualizar el teléfono y datos de contacto en el perfil del usuario invitado existente
+        await prisma.usuario.update({
+          where: { id_usuario: user_id },
+          data: {
+            nombres: data.formData.nombres,
+            primer_apellido: data.formData.primer_apellido,
+            segundo_apellido: data.formData.segundo_apellido || undefined,
+            telefono: data.formData.telefono
+          }
+        });
       } else {
         const newUser = await prisma.usuario.create({
           data: {
@@ -208,15 +231,15 @@ export async function createOrder(data: {
 
 async function cleanupExpiredPendingOrders() {
   try {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const oneHourAgo = new Date()
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1)
 
-    // Find all pending orders older than 7 days
+    // Find all pending orders older than 1 hour
     const expiredOrders = await prisma.pedido.findMany({
       where: {
         estado: 'pendiente',
         fecha_pedido: {
-          lt: sevenDaysAgo
+          lt: oneHourAgo
         }
       },
       include: {
@@ -226,7 +249,7 @@ async function cleanupExpiredPendingOrders() {
 
     if (expiredOrders.length === 0) return
 
-    console.log(`[Pending Cleanup] Cancelling ${expiredOrders.length} orders older than 7 days.`)
+    console.log(`[Pending Cleanup] Cancelling ${expiredOrders.length} orders older than 1 hour.`)
 
     await prisma.$transaction(async (tx) => {
       for (const order of expiredOrders) {

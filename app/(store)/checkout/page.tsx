@@ -25,6 +25,7 @@ import { createOrder } from '@/app/actions/orders'
 import { initWebpayTransaction } from '@/app/actions/webpay'
 import { getUserProfile, getUserAddresses } from '@/app/actions/profile'
 import { useEffect } from 'react'
+import { cleanChileanPhone } from '@/lib/utils'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -42,7 +43,7 @@ export default function CheckoutPage() {
     nombres: user?.nombre || '',
     primer_apellido: user?.apellido || '',
     segundo_apellido: '',
-    telefono: user?.telefono || '',
+    telefono: user?.telefono ? cleanChileanPhone(user.telefono) : '',
     calle: '',
     numero: '',
     departamento: '',
@@ -76,7 +77,7 @@ export default function CheckoutPage() {
             nombres: res.profile.nombres || prev.nombres,
             primer_apellido: res.profile.primer_apellido || prev.primer_apellido,
             segundo_apellido: res.profile.segundo_apellido || prev.segundo_apellido,
-            telefono: res.profile.telefono || prev.telefono,
+            telefono: res.profile.telefono ? cleanChileanPhone(res.profile.telefono) : prev.telefono,
           }))
         }
       })
@@ -164,7 +165,6 @@ export default function CheckoutPage() {
       const wpRes = await initWebpayTransaction(res.orderId, finalTotal)
       if (wpRes.success && wpRes.url && wpRes.token) {
         setWebpayData({ url: wpRes.url, token: wpRes.token })
-        clearCart()
       } else {
         setCheckoutError(wpRes.error || 'Error al conectar con Webpay.')
         setIsProcessing(false)
@@ -355,6 +355,9 @@ export default function CheckoutPage() {
                         placeholder="912345678"
                         required
                       />
+                      <p className="text-[11px] text-muted-foreground">
+                        Ingresa 9 dígitos, comenzando por el 9 (ej: 912345678).
+                      </p>
                     </div>
                   </div>
 
@@ -631,8 +634,36 @@ export default function CheckoutPage() {
                       key={`${item.producto.id}-${item.talla}-${item.color}`}
                       className="flex gap-3"
                     >
-                      <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                      <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden relative">
+                        {(() => {
+                          const { producto, color } = item
+                          let activeImage = '/placeholder.jpg'
+                          if (color && producto.imagenesPorColor) {
+                            const activeColorLower = color.toLowerCase().trim()
+                            const matchingKey = Object.keys(producto.imagenesPorColor).find(
+                              key => key.toLowerCase().trim() === activeColorLower
+                            )
+                            if (matchingKey) {
+                              const imagesForColor = producto.imagenesPorColor[matchingKey]
+                              if (imagesForColor && imagesForColor.length > 0) {
+                                activeImage = imagesForColor[0]
+                              }
+                            }
+                          }
+                          if (activeImage === '/placeholder.jpg' && producto.imagenes && producto.imagenes.length > 0) {
+                            activeImage = producto.imagenes[0]
+                          }
+
+                          return activeImage && activeImage !== '/placeholder.jpg' ? (
+                            <img
+                              src={activeImage}
+                              alt={producto.nombre}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                          )
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.producto.nombre}</p>

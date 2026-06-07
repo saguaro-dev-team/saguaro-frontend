@@ -31,16 +31,18 @@ function formatDate(dateString: string): string {
 
 export function RecentOrders({ data }: RecentOrdersProps) {
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pagado':
+    switch (status.toLowerCase()) {
+      case 'pagado':
         return 'bg-chart-2/20 text-chart-2 border-chart-2/30'
-      case 'En Preparación':
+      case 'en preparación':
+      case 'en preparacion':
+      case 'preparando':
         return 'bg-warning/20 text-warning border-warning/30'
-      case 'Enviado':
+      case 'enviado':
         return 'bg-chart-5/20 text-chart-5 border-chart-5/30'
-      case 'Entregado':
+      case 'entregado':
         return 'bg-primary/20 text-primary border-primary/30'
-      case 'Cancelado':
+      case 'cancelado':
         return 'bg-destructive/20 text-destructive border-destructive/30'
       default:
         return 'bg-secondary text-secondary-foreground'
@@ -92,7 +94,7 @@ export function RecentOrders({ data }: RecentOrdersProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Badge variant="outline" className={`${getStatusColor(pedido.estado_pedido)} text-xs`}>
+                  <Badge variant="outline" className={`${getStatusColor(pedido.estado_pedido)} text-xs capitalize`}>
                     {pedido.estado_pedido}
                   </Badge>
                   <p className="text-sm font-semibold text-foreground min-w-[100px] text-right">

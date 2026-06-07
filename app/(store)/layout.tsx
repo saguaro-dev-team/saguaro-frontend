@@ -20,15 +20,17 @@ export default function StoreLayout({
         document.body.style.pointerEvents = 'auto'
         document.body.style.overflow = 'auto'
         
-        // Eliminar cualquier overlay atascado de Radix
+        // Ocultar cualquier overlay atascado de Radix en lugar de removerlo físicamente
         const stuckOverlays = document.querySelectorAll(
           '[data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="dialog-portal"], [data-slot="sheet-portal"], [data-radix-focus-guard], [class*="DialogOverlay"], [class*="SheetOverlay"]'
         )
         stuckOverlays.forEach(el => {
-          el.remove()
+          if (el instanceof HTMLElement) {
+            el.style.display = 'none'
+          }
         })
       }
-
+      
       cleanup()
       const timer = setTimeout(cleanup, 300)
       return () => clearTimeout(timer)

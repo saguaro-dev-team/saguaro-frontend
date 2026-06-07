@@ -72,6 +72,7 @@ export interface KPIData {
   clientesRegistrados: number
   tasaConversion: number
   productosConStockCritico: number
+  totalVariantes: number
 }
 
 export interface VentasMensuales {

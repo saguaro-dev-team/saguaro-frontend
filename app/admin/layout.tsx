@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   FileText,
-  MessageSquare
+  MessageSquare,
+  ShieldAlert
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Productos', href: '/admin/productos', icon: Package },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
   { name: 'Usuarios', href: '/admin/clientes', icon: Users },
+  { name: 'Auditoría Stock', href: '/admin/auditoria', icon: ShieldAlert },
   { name: 'Blog', href: '/admin/blog', icon: FileText },
   { name: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
   { name: 'Configuracion', href: '/admin/configuracion', icon: Settings },
@@ -58,12 +60,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         document.body.style.pointerEvents = 'auto'
         document.body.style.overflow = 'auto'
         
-        // Eliminar cualquier overlay atascado de Radix
+        // Ocultar cualquier overlay atascado de Radix en lugar de removerlo físicamente
         const stuckOverlays = document.querySelectorAll(
           '[data-slot="dialog-overlay"], [data-slot="sheet-overlay"], [data-slot="dialog-portal"], [data-slot="sheet-portal"], [data-radix-focus-guard], [class*="DialogOverlay"], [class*="SheetOverlay"]'
         )
         stuckOverlays.forEach(el => {
-          el.remove()
+          if (el instanceof HTMLElement) {
+            el.style.display = 'none'
+          }
         })
       }
 
