@@ -7,6 +7,9 @@ import { MessagesList } from '@/components/admin/messages-list'
 export default async function AdminMessagesPage({ searchParams }: { searchParams: { motivo?: string } }) {
   let mensajes = await getContactMessages()
   
+  // Filtrar mensajes de inyección / pruebas de seguridad
+  mensajes = mensajes.filter((m: any) => m.email !== 'hacker@xss.com' && m.nombre !== 'Atacante XSS')
+  
   const currentFilter = searchParams.motivo || 'todos'
   
   if (currentFilter !== 'todos') {

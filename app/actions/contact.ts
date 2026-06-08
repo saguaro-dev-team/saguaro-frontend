@@ -4,6 +4,14 @@ import fs from 'fs'
 import path from 'path'
 import { revalidatePath } from 'next/cache'
 
+function safeRevalidatePath(p: string) {
+  try {
+    revalidatePath(p)
+  } catch (e) {
+    // Ignorar error de contexto fuera de Next.js (por ejemplo, al ejecutar scripts de prueba)
+  }
+}
+
 const mensajesFilePath = path.join(process.cwd(), 'lib', 'mensajes-data.json')
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
 
@@ -75,7 +83,7 @@ export async function submitContactMessage(formData: FormData) {
     console.log('--------------------------------------')
     // Nota para el usuario: Aquí se integraría Resend, SendGrid o nodemailer en un entorno de producción real.
 
-    revalidatePath('/admin/mensajes')
+    safeRevalidatePath('/admin/mensajes')
     return { success: true }
   } catch (error: any) {
     console.error('Error al enviar el mensaje:', error)
@@ -103,7 +111,7 @@ export async function markMessageAsRead(id: string) {
         if (index !== -1) {
             mensajes[index].leido = true;
             fs.writeFileSync(mensajesFilePath, JSON.stringify(mensajes, null, 2), 'utf8');
-            revalidatePath('/admin/mensajes');
+            safeRevalidatePath('/admin/mensajes');
             return { success: true };
         }
         return { success: false, error: 'Mensaje no encontrado' };
@@ -179,7 +187,7 @@ export async function replyToMessage(id: string, replyText: string) {
         console.log('==================================================')
       }
 
-      revalidatePath('/admin/mensajes')
+      safeRevalidatePath('/admin/mensajes')
       return { success: true }
     }
     return { success: false, error: 'Mensaje no encontrado' }

@@ -16,7 +16,8 @@ import {
   X,
   FileText,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Beaker
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
   { name: 'Usuarios', href: '/admin/clientes', icon: Users },
   { name: 'Auditoría Stock', href: '/admin/auditoria', icon: ShieldAlert },
+  { name: 'Pruebas', href: '/admin/pruebas', icon: Beaker },
   { name: 'Blog', href: '/admin/blog', icon: FileText },
   { name: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
   { name: 'Configuracion', href: '/admin/configuracion', icon: Settings },
