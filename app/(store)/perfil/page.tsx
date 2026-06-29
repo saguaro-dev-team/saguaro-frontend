@@ -464,11 +464,40 @@ function ProfileContent() {
                           </Badge>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-4 my-2">
                           {order.detalle_pedidos.map((det: any, idx: number) => (
-                            <div key={`${det.productos?.nombre}-${det.color}-${det.talla}-${idx}`} className="flex justify-between text-sm">
-                              <span>{det.cantidad}x {det.productos?.nombre} ({det.color}, {det.talla})</span>
-                              <span className="text-muted-foreground">{formatPrice(det.precio_unitario * det.cantidad)}</span>
+                            <div 
+                              key={`${det.productos?.nombre}-${det.color}-${det.talla}-${idx}`} 
+                              className="flex items-center gap-4 bg-muted/20 p-3 rounded-xl border border-muted/30"
+                            >
+                              <div className="h-16 w-16 bg-muted rounded-lg overflow-hidden shrink-0 flex items-center justify-center border relative">
+                                {det.productos?.imagen_url && det.productos?.imagen_url !== '/placeholder.jpg' ? (
+                                  <img 
+                                    src={det.productos.imagen_url} 
+                                    alt={det.productos.nombre} 
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <Package className="h-6 w-6 text-muted-foreground/30" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate">{det.productos?.nombre}</p>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                                  <span>Talla: {det.talla}</span>
+                                  <span>Color: {det.color}</span>
+                                  <span>Cant: {det.cantidad}</span>
+                                </div>
+                                {det.sku && (
+                                  <p className="text-[10px] font-mono text-muted-foreground mt-1 uppercase">
+                                    SKU: {det.sku}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-bold">{formatPrice(det.precio_unitario * det.cantidad)}</p>
+                                <p className="text-[10px] text-muted-foreground">{det.cantidad}x {formatPrice(det.precio_unitario)}</p>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -476,7 +505,7 @@ function ProfileContent() {
                         <div className="flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground mt-2">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-3 w-3" />
-                            <span>Pago: {order.pagos?.[0]?.metodos_pago?.nombre || 'Pendiente'}</span>
+                            <span>Pago: {order.pagos?.[0]?.metodo_pago || 'Pendiente'}</span>
                           </div>
                           {order.seguimiento_envio && (
                             <div className="flex items-center gap-2 text-primary font-medium">
@@ -485,6 +514,30 @@ function ProfileContent() {
                             </div>
                           )}
                         </div>
+
+                        {order.direccion_entrega && (
+                          <div className="bg-muted/40 p-4 rounded-xl border border-muted/50 text-xs space-y-2">
+                            <div>
+                              <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Dirección de despacho:</p>
+                              <p className="text-foreground font-medium">
+                                {order.direccion_entrega.calle} {order.direccion_entrega.numero}
+                                {order.direccion_entrega.departamento && `, Depto/Apto ${order.direccion_entrega.departamento}`}
+                              </p>
+                              <p className="text-muted-foreground">
+                                {order.direccion_entrega.comuna}, {order.direccion_entrega.region}
+                              </p>
+                            </div>
+
+                            {order.comentarios_cliente && (
+                              <div className="pt-2 border-t border-muted/70">
+                                <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Indicaciones de entrega:</p>
+                                <p className="text-foreground italic leading-relaxed bg-background/50 p-2 rounded-lg border">
+                                  "{order.comentarios_cliente}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <Separator />
                         <div className="flex justify-between items-center">

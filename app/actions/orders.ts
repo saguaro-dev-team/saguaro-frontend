@@ -10,6 +10,15 @@ export async function getUserOrders(userId: string) {
     const orders = await prisma.pedido.findMany({
       where: { id_usuario: id },
       include: {
+        direccion: {
+          include: {
+            comuna: {
+              include: {
+                region: true
+              }
+            }
+          }
+        },
         pagos: {
           include: {
             metodo_pago: true
@@ -41,6 +50,15 @@ export async function getUserOrders(userId: string) {
       fecha_pedido: o.fecha_pedido,
       total_pagado: o.total,
       estado: { nombre: o.estado },
+      comentarios_cliente: o.comentarios_cliente,
+      direccion_entrega: o.direccion ? {
+        calle: o.direccion.calle,
+        numero: o.direccion.numero,
+        departamento: o.direccion.departamento,
+        comuna: o.direccion.comuna.nombre,
+        region: o.direccion.comuna.region.nombre,
+        detalles: o.direccion.detalles
+      } : null,
       pagos: o.pagos.map(p => ({
         metodo_pago: p.metodo_pago.nombre,
         monto: p.monto,
@@ -56,9 +74,10 @@ export async function getUserOrders(userId: string) {
         precio_unitario: a.precio,
         color: a.producto.color.nombre_color,
         talla: a.producto.talla.nombre_talla,
+        sku: a.producto.codigo_sku,
         productos: {
           nombre: a.producto.modelo.nombre_modelo,
-          imagen_url: '/placeholder.jpg'
+          imagen_url: a.producto.modelo.imagen_url || '/placeholder.jpg'
         }
       }))
     }))
@@ -164,6 +183,7 @@ export async function createOrder(data: {
           fk_numero_correlativo_direccion: direccion.id_direccion,
           total: data.finalTotal,
           estado: "pendiente",
+          comentarios_cliente: data.formData.comentarios || null,
         }
       });
 
