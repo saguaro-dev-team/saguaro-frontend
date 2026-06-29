@@ -26,6 +26,7 @@ export async function submitContactMessage(formData: FormData) {
     const numero_pedido = formData.get('numero_pedido') as string | null
     const linkedin_url = formData.get('linkedin_url') as string | null
     const cv_file = formData.get('cv_file') as File | null
+    const usuarioId = formData.get('usuarioId') as string | null
 
     let cv_url = null
 
@@ -63,7 +64,8 @@ export async function submitContactMessage(formData: FormData) {
       linkedin_url,
       cv_url,
       leido: false,
-      respondido: false
+      respondido: false,
+      usuarioId: usuarioId || null
     }
 
     // Guardar en "base de datos" local (JSON)
@@ -88,6 +90,50 @@ export async function submitContactMessage(formData: FormData) {
   } catch (error: any) {
     console.error('Error al enviar el mensaje:', error)
     return { success: false, error: 'Hubo un problema al enviar tu mensaje.' }
+  }
+}
+
+export async function subscribeToNewsletter(email: string) {
+  try {
+    if (!email || !email.includes('@')) {
+      return { success: false, error: 'Por favor ingresa un correo válido.' }
+    }
+
+    // Leer mensajes existentes
+    let mensajes = []
+    if (fs.existsSync(mensajesFilePath)) {
+      const fileContent = fs.readFileSync(mensajesFilePath, 'utf8')
+      mensajes = JSON.parse(fileContent)
+    }
+
+    // Check if already subscribed
+    const existing = mensajes.find((m: any) => m.email === email && m.motivo === 'newsletter')
+    if (existing) {
+      return { success: true, alreadySubscribed: true }
+    }
+
+    const nuevoMensaje = {
+      id: Date.now().toString(),
+      fecha: new Date().toISOString(),
+      nombre: 'Suscriptor Boletín',
+      email,
+      motivo: 'newsletter',
+      mensaje: 'El usuario se suscribió al boletín de ofertas y novedades.',
+      numero_pedido: null,
+      linkedin_url: null,
+      cv_url: null,
+      leido: false,
+      respondido: false
+    }
+
+    mensajes.unshift(nuevoMensaje)
+    fs.writeFileSync(mensajesFilePath, JSON.stringify(mensajes, null, 2), 'utf8')
+
+    safeRevalidatePath('/admin/mensajes')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error al suscribir:', error)
+    return { success: false, error: 'Ocurrió un error al procesar tu suscripción.' }
   }
 }
 
@@ -193,6 +239,16 @@ export async function replyToMessage(id: string, replyText: string) {
     return { success: false, error: 'Mensaje no encontrado' }
   } catch (error: any) {
     console.error("Error al responder mensaje:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getUserContactMessages(userId: string, email: string) {
+  try {
+    const msgs = await getContactMessages()
+    const userMsgs = msgs.filter((m: any) => m.usuarioId === userId || m.email === email)
+    return { success: true, messages: userMsgs }
+  } catch (error: any) {
     return { success: false, error: error.message }
   }
 }

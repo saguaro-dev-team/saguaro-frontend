@@ -19,6 +19,7 @@ export function CriticalStock({ data }: CriticalStockProps) {
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [localData, setLocalData] = useState<StockCritico[]>(data)
+  const [searchTerm, setSearchTerm] = useState("")
 
   // Sync localData when prop changes
   if (data !== localData && !dialogOpen) {
@@ -73,6 +74,11 @@ export function CriticalStock({ data }: CriticalStockProps) {
     }
   }
 
+  const filteredData = localData.filter(producto => 
+    producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (producto.codigo_sku && producto.codigo_sku.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
   return (
     <>
       <Card className="bg-card border-border">
@@ -96,53 +102,73 @@ export function CriticalStock({ data }: CriticalStockProps) {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {localData.map((producto) => (
-                <div
-                  key={producto.id_producto}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border hover:bg-secondary/70 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {producto.nombre}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        Stock: <span className="text-foreground font-medium">{Math.round(producto.stock)}</span>
-                      </span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <TrendingDown className="h-3 w-3" />
-                        {producto.velocidadVenta.toFixed(1)}/día
-                      </span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Se agota ~{getAgotamientoFecha(producto.diasRestantes)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-2">
-                    <div className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={`${getUrgencyColor(producto.diasRestantes)} text-xs`}
-                      >
-                        {getUrgencyLabel(producto.diasRestantes)}
-                      </Badge>
-                      <p className="text-lg font-bold text-foreground leading-none mt-1">{Math.round(producto.diasRestantes)}</p>
-                      <p className="text-xs text-muted-foreground">días</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1 text-xs"
-                      onClick={() => handleAddStockClick(producto)}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Añadir
-                    </Button>
-                  </div>
+            <div className="space-y-4">
+              <Input
+                placeholder="Buscar por SKU o nombre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-background border-border"
+              />
+              
+              {filteredData.length === 0 ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No se encontraron productos coincidentes
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {filteredData.map((producto) => (
+                    <div
+                      key={producto.id_producto}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border hover:bg-secondary/70 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 mr-2">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {producto.nombre}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                            SKU: {producto.codigo_sku}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            Stock: <span className="text-foreground font-medium">{Math.round(producto.stock)}</span>
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <TrendingDown className="h-3 w-3" />
+                            {producto.velocidadVenta.toFixed(1)}/día
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Se agota ~{getAgotamientoFecha(producto.diasRestantes)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-auto shrink-0">
+                        <div className="text-center min-w-[50px]">
+                          <Badge
+                            variant="outline"
+                            className={`${getUrgencyColor(producto.diasRestantes)} text-[10px] px-1.5 py-0`}
+                          >
+                            {getUrgencyLabel(producto.diasRestantes)}
+                          </Badge>
+                          <p className="text-base font-bold text-foreground leading-none mt-1">{Math.round(producto.diasRestantes)}</p>
+                          <p className="text-[10px] text-muted-foreground">días</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-xs"
+                          onClick={() => handleAddStockClick(producto)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Añadir
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -154,6 +180,9 @@ export function CriticalStock({ data }: CriticalStockProps) {
             <DialogTitle>Añadir Stock</DialogTitle>
             <DialogDescription>
               Producto: <span className="font-semibold text-foreground">{selectedProduct?.nombre}</span>
+              {selectedProduct?.codigo_sku && (
+                <span className="block mt-1 font-mono text-xs text-muted-foreground">SKU: {selectedProduct.codigo_sku}</span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">

@@ -2,8 +2,9 @@
 
 import { use, useState, useMemo, Suspense, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Filter, SlidersHorizontal, X } from 'lucide-react'
+import { Filter, SlidersHorizontal, X, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Sheet,
@@ -104,6 +105,7 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
   const [sortBy, setSortBy] = useState('featured')
   const [showOnlyNew, setShowOnlyNew] = useState(false)
   const [showOnlyDiscount, setShowOnlyDiscount] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   
   // Nuevos filtros
   const [selectedGeneros, setSelectedGeneros] = useState<string[]>([])
@@ -114,6 +116,19 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
 
   const categoryProducts = useMemo(() => {
     let filtered = [...dbProducts]
+
+    // Filter by search query (checks name, colors, type, use, and style)
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter((p) => {
+        const matchesName = p.nombre.toLowerCase().includes(query)
+        const matchesColor = p.colores.some((c) => c.toLowerCase().includes(query))
+        const matchesType = p.tipo.toLowerCase().includes(query)
+        const matchesUso = p.uso?.toLowerCase().includes(query) || false
+        const matchesEstilo = p.estilo?.toLowerCase().includes(query) || false
+        return matchesName || matchesColor || matchesType || matchesUso || matchesEstilo
+      })
+    }
 
     // Filter by type
     if (selectedTypes.length > 0) {
@@ -183,6 +198,7 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
     selectedEstilos,
     selectedColors,
     selectedSizes,
+    searchQuery,
   ])
 
   const toggleType = (type: ProductType) => {
@@ -200,6 +216,7 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
     setSelectedEstilos([])
     setSelectedColors([])
     setSelectedSizes([])
+    setSearchQuery('')
   }
 
   const toggleFilter = (list: string[], setList: (l: string[]) => void, value: string) => {
@@ -270,7 +287,8 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
     selectedUsos.length +
     selectedEstilos.length +
     selectedColors.length +
-    selectedSizes.length
+    selectedSizes.length +
+    (searchQuery.trim() !== '' ? 1 : 0)
 
   const hasActiveFilters = activeFiltersCount > 0
 
@@ -514,8 +532,8 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
           {/* Main Content */}
           <div className="flex-1">
             {/* Toolbar */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 pb-4 border-b border-border/40">
+              <div className="flex items-center gap-4 flex-1">
                 {/* Mobile Filters */}
                 <Sheet>
                   <SheetTrigger asChild>
@@ -542,24 +560,68 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
                   </SheetContent>
                 </Sheet>
 
-                <span className="text-sm text-muted-foreground">
-                  {categoryProducts.length} productos
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {categoryProducts.length} {categoryProducts.length === 1 ? 'producto' : 'productos'}
                 </span>
+
+                {/* Search Bar - Desktop & Tablet */}
+                <div className="relative w-full max-w-[200px] md:max-w-xs hidden sm:block">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/75" />
+                  <Input
+                    type="search"
+                    placeholder="Buscar por nombre..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-10 w-full bg-background border-border/80 focus-visible:ring-1"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title="Limpiar búsqueda"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Sort */}
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                {/* Search Bar - Mobile */}
+                <div className="relative flex-1 max-w-[200px] sm:hidden">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/75" />
+                  <Input
+                    type="search"
+                    placeholder="Buscar por nombre..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-10 w-full bg-background border-border/80 focus-visible:ring-1"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title="Limpiar búsqueda"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[180px] h-10">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Active Filters */}
@@ -660,6 +722,16 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
                     <X className="h-3 w-3 ml-1" />
                   </Badge>
                 )}
+                {searchQuery && (
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    {`Búsqueda: ${searchQuery}`}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                )}
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   Limpiar todo
                 </Button>
@@ -675,9 +747,15 @@ function CategoryContent({ categoria: rawCategoria }: { categoria: string }) {
               </div>
             ) : categoryProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
-                {categoryProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} selectedColors={selectedColors} />
-                ))}
+                {categoryProducts.map((product) => {
+                  const searchMatchedColors = searchQuery.trim() !== ''
+                    ? product.colores.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase().trim())).map(c => c.toLowerCase().trim())
+                    : []
+                  const combinedColors = [...selectedColors, ...searchMatchedColors]
+                  return (
+                    <ProductCard key={product.id} product={product} selectedColors={combinedColors} selectedSizes={selectedSizes} />
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-16">

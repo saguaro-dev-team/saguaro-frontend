@@ -26,6 +26,7 @@ import { initWebpayTransaction } from '@/app/actions/webpay'
 import { getUserProfile, getUserAddresses } from '@/app/actions/profile'
 import { useEffect } from 'react'
 import { cleanChileanPhone } from '@/lib/utils'
+import { checkCartStock } from '@/app/actions/products'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -47,6 +48,7 @@ export default function CheckoutPage() {
     calle: '',
     numero: '',
     departamento: '',
+    detalles: '',
     id_comuna: 0,
     codigoPostal: '',
   })
@@ -55,6 +57,31 @@ export default function CheckoutPage() {
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
   const [validationError, setValidationError] = useState('')
+  const [stockChecks, setStockChecks] = useState<any[]>([])
+  const [checkingStock, setCheckingStock] = useState(false)
+
+  useEffect(() => {
+    if (items.length > 0) {
+      setCheckingStock(true)
+      const payload = items.map(item => ({
+        id: item.producto.id,
+        talla: item.talla,
+        color: item.color,
+        cantidad: item.cantidad
+      }))
+      checkCartStock(payload).then(res => {
+        if (res.success && res.stockStates) {
+          setStockChecks(res.stockStates)
+        }
+        setCheckingStock(false)
+      }).catch(err => {
+        console.error("Error checking stock in checkout page:", err)
+        setCheckingStock(false)
+      })
+    }
+  }, [items])
+
+  const hasAnyStockError = stockChecks.some(c => !c.hasEnoughStock)
 
   useEffect(() => {
     setMounted(true)
@@ -119,6 +146,10 @@ export default function CheckoutPage() {
 
   const handleContinueToStep2 = () => {
     setValidationError('')
+    if (hasAnyStockError) {
+      setValidationError('Por favor resuelve los problemas de stock en tu carrito.')
+      return
+    }
     const { email, nombres, primer_apellido, segundo_apellido, telefono, calle, numero, id_comuna } = formData
     
     if (!email || !nombres || !primer_apellido || !segundo_apellido || !telefono || !calle || !numero || !id_comuna) {
@@ -147,6 +178,10 @@ export default function CheckoutPage() {
   const handleSubmit = async () => {
     if (!user?.id) {
       setCheckoutError('Debes iniciar sesión para completar la compra.')
+      return
+    }
+    if (hasAnyStockError) {
+      setCheckoutError('No puedes proceder con el pago porque hay productos sin stock suficiente.')
       return
     }
     setIsProcessing(true)
@@ -303,6 +338,13 @@ export default function CheckoutPage() {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Form */}
           <div className="lg:col-span-2">
+            {hasAnyStockError && (
+              <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold mb-6 flex flex-col gap-1">
+                <span>⚠️ ¡Atención! Algunos productos en tu carrito ya no tienen stock suficiente.</span>
+                <span className="text-xs font-normal">Por favor, ajusta las cantidades o elimina los productos marcados para poder continuar.</span>
+              </div>
+            )}
+            
             {/* Step 1: Contact & Address */}
             {step === 1 && (
               <Card>
@@ -499,7 +541,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <Button className="w-full" onClick={handleContinueToStep2}>
+                  <Button className="w-full" onClick={handleContinueToStep2} disabled={hasAnyStockError}>
                     Continuar al Envio
                   </Button>
                 </CardContent>
@@ -560,7 +602,7 @@ export default function CheckoutPage() {
                     <Button variant="outline" onClick={() => setStep(1)}>
                       Volver
                     </Button>
-                    <Button className="flex-1" onClick={() => setStep(3)}>
+                    <Button className="flex-1" onClick={() => setStep(3)} disabled={hasAnyStockError}>
                       Continuar al Pago
                     </Button>
                   </div>
@@ -611,7 +653,7 @@ export default function CheckoutPage() {
                     <Button
                       className="flex-1"
                       onClick={handleSubmit}
-                      disabled={isProcessing}
+                      disabled={isProcessing || hasAnyStockError}
                     >
                       {isProcessing ? 'Procesando...' : `Pagar ${formatPrice(finalTotal)}`}
                     </Button>
@@ -670,7 +712,18 @@ export default function CheckoutPage() {
                         <p className="text-xs text-muted-foreground">
                           Talla: {item.talla} | Color: {item.color} | Cant: {item.cantidad}
                         </p>
-                        <p className="text-sm font-medium">
+                        {(() => {
+                          const check = stockChecks.find(c => c.id === item.producto.id && c.talla === item.talla && c.color === item.color)
+                          if (check && !check.hasEnoughStock) {
+                            return (
+                              <p className="text-[11px] text-rose-600 font-semibold mt-0.5">
+                                {check.stock === 0 ? '¡Sin stock disponible!' : `Solo quedan ${check.stock} unidades`}
+                              </p>
+                            )
+                          }
+                          return null
+                        })()}
+                        <p className="text-sm font-medium mt-1">
                           {formatPrice(item.producto.precio * item.cantidad)}
                         </p>
                       </div>

@@ -62,18 +62,44 @@ async function processWebpayReturn(req: NextRequest) {
 
     if (response.status === 'AUTHORIZED') {
       await prisma.$transaction(async (prismaTx) => {
-        await prismaTx.pedido.update({
+        // Fetch order details including articles
+        const order = await prismaTx.pedido.findUnique({
           where: { id_pedido: orderId },
-          data: { estado: 'pagado' }
+          include: { articulos: true }
         })
 
-        await prismaTx.transaccion_pago.updateMany({
-          where: { id_pedido: orderId },
-          data: {
-            estado_pago: 'Aprobado',
-            cod_autorizacion: response.authorization_code
+        if (!order) {
+          throw new Error('Pedido no encontrado')
+        }
+
+        // Only deduct stock if order is currently 'pendiente'
+        if (order.estado === 'pendiente') {
+          for (const art of order.articulos) {
+            const product = await prismaTx.producto.findUnique({
+              where: { id_producto: art.id_producto }
+            })
+            if (!product || product.stock < art.cantidad) {
+              throw new Error(`Stock insuficiente para el Producto ID: ${art.id_producto}`)
+            }
+            await prismaTx.producto.update({
+              where: { id_producto: art.id_producto },
+              data: { stock: { decrement: art.cantidad } }
+            })
           }
-        })
+
+          await prismaTx.pedido.update({
+            where: { id_pedido: orderId },
+            data: { estado: 'pagado' }
+          })
+
+          await prismaTx.transaccion_pago.updateMany({
+            where: { id_pedido: orderId },
+            data: {
+              estado_pago: 'Aprobado',
+              cod_autorizacion: response.authorization_code
+            }
+          })
+        }
       })
 
       return NextResponse.redirect(new URL(`/checkout/success?order=${orderId}`, req.url), { status: 303 })
@@ -125,17 +151,10 @@ async function cancelOrderAndRestoreStock(orderId: number) {
           data: { estado_pago: 'Rechazado' }
         })
 
-        // Restore stock for all articles in the order
-        for (const art of order.articulos) {
-          await tx.producto.update({
-            where: { id_producto: art.id_producto },
-            data: { stock: { increment: art.cantidad } }
-          })
-        }
-        console.log(`[Webpay Return] Order ${orderId} was cancelled and stock restored immediately because the user aborted or transaction failed.`)
+        console.log(`[Webpay Return] Order ${orderId} was cancelled (treated as abandoned cart) because the user aborted or transaction failed.`)
       }
     })
   } catch (e) {
-    console.error('Failed to cancel order and restore stock:', e)
+    console.error('Failed to cancel order:', e)
   }
 }

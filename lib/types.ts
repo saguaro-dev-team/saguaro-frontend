@@ -91,6 +91,7 @@ export interface ProductoVendido {
 export interface StockCritico {
   id_producto: number
   nombre: string
+  codigo_sku: string
   stock: number
   velocidadVenta: number
   diasRestantes: number

@@ -13,7 +13,8 @@ export const kpiData: KPIData = {
   totalPedidos: 183,
   clientesRegistrados: 342,
   tasaConversion: 3.8,
-  productosConStockCritico: 5
+  productosConStockCritico: 5,
+  totalVariantes: 15
 }
 
 // Mock Monthly Sales Data
@@ -43,11 +44,11 @@ export const productosVendidos: ProductoVendido[] = [
 
 // Mock Critical Stock Products
 export const stockCritico: StockCritico[] = [
-  { id_producto: 1, nombre: 'Saguaro Trail Runner Pro - 42 Negro', stock: 3, velocidadVenta: 1.2, diasRestantes: 3 },
-  { id_producto: 2, nombre: 'Saguaro Urban Walker - 38 Gris', stock: 5, velocidadVenta: 0.8, diasRestantes: 6 },
-  { id_producto: 3, nombre: 'Saguaro Aqua Grip - 40 Azul', stock: 4, velocidadVenta: 0.7, diasRestantes: 6 },
-  { id_producto: 4, nombre: 'Saguaro Kids Active - 32 Rojo', stock: 2, velocidadVenta: 0.5, diasRestantes: 4 },
-  { id_producto: 5, nombre: 'Saguaro Trail Runner Pro - 44 Verde', stock: 4, velocidadVenta: 0.6, diasRestantes: 7 }
+  { id_producto: 1, nombre: 'Saguaro Trail Runner Pro - 42 Negro', codigo_sku: 'SAG-TRAIL-BLK-42', stock: 3, velocidadVenta: 1.2, diasRestantes: 3 },
+  { id_producto: 2, nombre: 'Saguaro Urban Walker - 38 Gris', codigo_sku: 'SAG-URBAN-GRY-38', stock: 5, velocidadVenta: 0.8, diasRestantes: 6 },
+  { id_producto: 3, nombre: 'Saguaro Aqua Grip - 40 Azul', codigo_sku: 'SAG-AQUA-BLU-40', stock: 4, velocidadVenta: 0.7, diasRestantes: 6 },
+  { id_producto: 4, nombre: 'Saguaro Kids Active - 32 Rojo', codigo_sku: 'SAG-KIDS-RED-32', stock: 2, velocidadVenta: 0.5, diasRestantes: 4 },
+  { id_producto: 5, nombre: 'Saguaro Trail Runner Pro - 44 Verde', codigo_sku: 'SAG-TRAIL-GRN-44', stock: 4, velocidadVenta: 0.6, diasRestantes: 7 }
 ]
 
 // Mock Recent Orders

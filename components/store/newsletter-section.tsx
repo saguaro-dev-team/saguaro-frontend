@@ -3,15 +3,29 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { subscribeToNewsletter } from '@/app/actions/contact'
 
 export function NewsletterSection() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically send the email to your backend
-    setSubmitted(true)
+    if (!email.trim()) return
+
+    setLoading(true)
+    try {
+      const res = await subscribeToNewsletter(email)
+      if (res.success) {
+        setSubmitted(true)
+      }
+    } catch (err) {
+      console.error("Error subscribing:", err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -39,13 +53,15 @@ export function NewsletterSection() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={loading}
               className="bg-primary-foreground text-foreground placeholder:text-muted-foreground sm:w-80"
             />
             <Button
               type="submit"
+              disabled={loading}
               className="bg-foreground text-background hover:bg-foreground/90"
             >
-              Suscribirse
+              {loading ? 'Suscribiendo...' : 'Suscribirse'}
             </Button>
           </form>
         )}

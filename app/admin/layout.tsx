@@ -24,6 +24,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth-context'
 import { useState } from 'react'
+import { getContactMessages } from '@/app/actions/contact'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -43,6 +44,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { isAuthenticated, isAdmin, isLoading, user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [unreadMessages, setUnreadMessages] = useState(0)
+
+  useEffect(() => {
+    async function fetchUnread() {
+      try {
+        const msgs = await getContactMessages()
+        // Filter out safety injection / hack payloads from security tests
+        const realUnread = msgs.filter((m: any) => !m.leido && m.email !== 'hacker@xss.com' && m.nombre !== 'Atacante XSS').length
+        setUnreadMessages(realUnread)
+      } catch (e) {
+        console.error("Error fetching unread count:", e)
+      }
+    }
+    if (isAuthenticated && isAdmin) {
+      fetchUnread()
+    }
+  }, [pathname, isAuthenticated, isAdmin])
 
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || !isAdmin)) {
@@ -124,7 +142,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           >
             <item.icon className="h-5 w-5" />
-            {item.name}
+            <span className="flex-1">{item.name}</span>
+            {item.name === 'Mensajes' && unreadMessages > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+                {unreadMessages}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

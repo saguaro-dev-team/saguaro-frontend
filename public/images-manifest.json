@@ -170,40 +170,7 @@
       "/zapatillas/Hombre/Deportivas/Fast 1/negro/5.jpg"
     ]
   },
-  "Smart 1": {
-    "Beige": [
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/1.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/2.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/3.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/4.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/5.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Beige/6.jpg"
-    ],
-    "Blanco": [
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/1.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/2.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/3.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/4.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/5.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Blanco/6.jpg"
-    ],
-    "Gris": [
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/1.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/2.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/3.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/4.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/5.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Gris/6.jpg"
-    ],
-    "Negro": [
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/1.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/2.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/3.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/4.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/5.jpg",
-      "/zapatillas/Hombre/Deportivas/Smart 1/Negro/6.jpg"
-    ]
-  },
+  "Smart 1": {},
   "Vitality 3": {
     "Amarillo": [
       "/zapatillas/Hombre/Deportivas/Vitality 3/amarillo/1.jpg",

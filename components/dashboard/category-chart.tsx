@@ -75,8 +75,8 @@ export function CategoryChart({ data }: CategoryChartProps) {
                   borderRadius: '8px',
                   color: 'oklch(0.98 0 0)'
                 }}
-                formatter={(value: number, _name: string, props: { payload: { porcentaje: number } }) => [
-                  `${formatCurrency(value)} (${props.payload.porcentaje}%)`, 
+                formatter={(value: number, _name: string, props: any) => [
+                  `${formatCurrency(value)} (${props.payload?.porcentaje}%)`, 
                   'Ventas'
                 ]}
                 labelStyle={{ color: 'oklch(0.65 0 0)' }}

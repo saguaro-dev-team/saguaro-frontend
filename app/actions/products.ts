@@ -52,8 +52,9 @@ function mapProduct(m: any): Product {
        const existingTalla = tallasPorColor[colorName].find(t => t.talla === tName)
        if (existingTalla) {
          existingTalla.stock += v.stock
+         if (!existingTalla.sku) existingTalla.sku = v.codigo_sku
        } else {
-         tallasPorColor[colorName].push({ talla: tName, stock: v.stock })
+         tallasPorColor[colorName].push({ talla: tName, stock: v.stock, sku: v.codigo_sku })
        }
      }
      
@@ -74,7 +75,7 @@ function mapProduct(m: any): Product {
 
   const isNuevo = variantes.some((v:any) => v.novedades && v.novedades.length > 0)
 
-  const manifest = getManifest();
+  const manifest = getManifest() || {};
   const cleanModelName = m.nombre_modelo.replace(/-/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const modelImages = manifest[cleanModelName] || manifest[m.nombre_modelo] || {};
   const imagenesPorColor: Record<string, string[]> = {};
@@ -221,4 +222,32 @@ export async function searchProducts(query: string) {
   })
   
   return filtered.map(mapProduct)
+}
+
+export async function checkCartStock(items: { id: string; talla: number; color: string; cantidad: number }[]) {
+  try {
+    const results = []
+    for (const item of items) {
+      const idModelo = parseInt(item.id)
+      const productVariant = await prisma.producto.findFirst({
+        where: {
+          id_modelo: idModelo,
+          color: { nombre_color: item.color },
+          talla: { nombre_talla: String(item.talla) }
+        }
+      })
+      const stock = productVariant ? productVariant.stock : 0
+      results.push({
+        id: item.id,
+        talla: item.talla,
+        color: item.color,
+        stock,
+        hasEnoughStock: stock >= item.cantidad,
+      })
+    }
+    return { success: true, stockStates: results }
+  } catch (e: any) {
+    console.error("[checkCartStock] Error:", e)
+    return { success: false, error: e.message || 'Error al validar stock' }
+  }
 }

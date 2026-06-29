@@ -131,7 +131,7 @@ export default function StandaloneReportPage() {
       ["LOAD-01", "Endpoints de API y pasarela de pago bajo alto tráfico", "Grafana k6 (100 VUs concurrentes)", "0.00% err / 506 RPS"],
       ["INT-01", "Checkout transaccional de compra, Webpay y stock", "Prisma Client Transactions / Webpay SDK Mock", "3 / 3 PASSED"],
       ["API-01", "Integridad de endpoints de catálogo y cobros", "HTTP mock requests con aserciones de estado (200/400)", "6 / 6 PASSED"],
-      ["E2E-01", "Flujo completo de compra interactivo en navegador", "Playwright (Browser automation Headless Chromium)", "2 / 2 PASSED"],
+      ["E2E-01", "Flujo completo de compra interactivo en navegador", "Playwright (Browser automation Headless Chromium)", "3 / 3 PASSED"],
       ["A11Y-01", "Estructura HTML semántica, contraste y lectores de pantalla", "Axe-core engine / directivas WCAG 2.1 AA", "100/100 PASSED"]
     ]
 
@@ -741,9 +741,9 @@ export default function StandaloneReportPage() {
                   </p>
                   <p>
                     <strong>Mapeo del Flujo en Saguaro:</strong> Cuando un usuario compra zapatillas, el flujo es el siguiente:
-                    1. El cliente inicia el checkout, reservando stock temporalmente en la tabla `pedido_variante` para que otros usuarios no se lleven las zapatillas mientras paga.
-                    2. Webpay procesa la transacción y envía el token cifrado al endpoint.
-                    3. La acción actualiza el pedido a 'PAGADO' en PostgreSQL y ejecuta la transacción Prisma que decrementa permanentemente el stock. Si la pasarela falla o es cancelada, el stock se devuelve inmediatamente en el webhook.
+                    1. El cliente inicia el checkout. El sistema realiza la validación de stock en tiempo real ("al principio"), pero NO reserva ni descuenta stock preventivamente; el pedido queda en estado "pendiente" (tratado como carrito abandonado).
+                    2. Webpay procesa la transacción y envía el callback cifrado.
+                    3. Si la transacción es exitosa, se actualiza el estado a 'pagado' y se ejecuta la transacción Prisma que descuenta permanentemente el stock. Si la pasarela de pago falla o es cancelada, el pedido se marca como 'cancelado' sin alterar el stock.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/40 p-4 rounded-xl border border-slate-800/80 text-xs mt-4">

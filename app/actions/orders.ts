@@ -194,11 +194,6 @@ export async function createOrder(data: {
             precio: price,
           }
         });
-
-        await tx.producto.update({
-          where: { id_producto: productoVariant.id_producto },
-          data: { stock: productoVariant.stock - qty }
-        });
       }
 
       // 3. Create dummy Payment record
@@ -262,13 +257,6 @@ async function cleanupExpiredPendingOrders() {
           where: { id_pedido: order.id_pedido },
           data: { estado_pago: 'Rechazado' }
         })
-
-        for (const art of order.articulos) {
-          await tx.producto.update({
-            where: { id_producto: art.id_producto },
-            data: { stock: { increment: art.cantidad } }
-          })
-        }
       }
     })
   } catch (e) {
@@ -330,6 +318,7 @@ export async function getAdminOrders() {
         nombre: a.producto.modelo.nombre_modelo,
         color: a.producto.color.nombre_color,
         talla: a.producto.talla.nombre_talla,
+        sku: a.producto.codigo_sku,
         cantidad: a.cantidad,
         precio: a.precio
       }))
@@ -355,14 +344,11 @@ export async function updateOrderStatus(orderId: number, newStatus: string) {
         throw new Error('Pedido no encontrado')
       }
 
-      // If transition is to canceled, and it wasn't canceled already, restore stock
-      if (newStatus === 'cancelado' && oldOrder.estado !== 'cancelado') {
-        // Cancel payments
-        await tx.transaccion_pago.updateMany({
-          where: { id_pedido: orderId },
-          data: { estado_pago: 'Rechazado' }
-        })
+      const isSubtracted = (status: string) => ['pagado', 'preparando', 'enviado', 'entregado'].includes(status)
+      const wasSubtracted = isSubtracted(oldOrder.estado)
+      const willBeSubtracted = isSubtracted(newStatus)
 
+      if (wasSubtracted && !willBeSubtracted) {
         // Restore stock
         for (const art of oldOrder.articulos) {
           await tx.producto.update({
@@ -370,15 +356,19 @@ export async function updateOrderStatus(orderId: number, newStatus: string) {
             data: { stock: { increment: art.cantidad } }
           })
         }
-      } 
-      // If transitioning FROM canceled to something else (e.g. back to pendiente/pagado), deduct stock again
-      else if (oldOrder.estado === 'cancelado' && newStatus !== 'cancelado') {
+        // Cancel payments
+        await tx.transaccion_pago.updateMany({
+          where: { id_pedido: orderId },
+          data: { estado_pago: 'Rechazado' }
+        })
+      } else if (!wasSubtracted && willBeSubtracted) {
+        // Deduct stock
         for (const art of oldOrder.articulos) {
           const product = await tx.producto.findUnique({
             where: { id_producto: art.id_producto }
           })
           if (!product || product.stock < art.cantidad) {
-            throw new Error(`Stock insuficiente para restaurar el pedido (Producto ID: ${art.id_producto})`)
+            throw new Error(`Stock insuficiente para cambiar estado del pedido (Producto ID: ${art.id_producto})`)
           }
           await tx.producto.update({
             where: { id_producto: art.id_producto },

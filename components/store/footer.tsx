@@ -41,11 +41,11 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Image
-              src="/images/saguarologo.png"
+              src="/images/saguarologo-footer.webp"
               alt="Saguaro"
-              width={150}
-              height={50}
-              className="h-12 w-auto object-contain"
+              width={200}
+              height={250}
+              className="h-32 w-auto object-contain"
             />
 
             <p className="mt-4 max-w-xs text-sm text-background/80">

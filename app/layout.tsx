@@ -14,21 +14,8 @@ export const metadata: Metadata = {
   description: 'Tienda oficial de calzado barefoot y ergonómico en Chile. Descubre comodidad natural para hombre, mujer y niños.',
   keywords: ['barefoot', 'calzado ergonomico', 'zapatos naturales', 'saguaro', 'chile'],
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/images/saguarologo-footer.webp',
+    apple: '/images/saguarologo-footer.webp',
   },
 }
 

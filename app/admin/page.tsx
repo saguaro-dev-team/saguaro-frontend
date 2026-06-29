@@ -39,7 +39,9 @@ import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
 
 export default function AdminDashboardPage() {
-  const [period, setPeriod] = useState('month')
+  const [period, setPeriod] = useState<any>('last30')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [data, setData] = useState<any>({
     kpi: null, ventasMensuales: [], productosVendidos: [], stockCritico: [], 
@@ -48,18 +50,39 @@ export default function AdminDashboardPage() {
 
   const { toast } = useToast()
 
-  const loadData = async (activePeriod: string = period) => {
+  // Pre-populate custom dates with last 30 days
+  useEffect(() => {
+    const today = new Date()
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(today.getDate() - 30)
+    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    setStartDate(formatDate(thirtyDaysAgo))
+    setEndDate(formatDate(today))
+  }, [])
+
+  const loadData = async (activePeriod: string = period, activeStart: string = startDate, activeEnd: string = endDate) => {
     setIsRefreshing(true)
     try {
-      const p = activePeriod as 'today' | 'week' | 'month' | 'quarter' | 'year'
+      const filter = {
+        period: activePeriod as any,
+        startDate: activePeriod === 'custom' ? activeStart : undefined,
+        endDate: activePeriod === 'custom' ? activeEnd : undefined
+      }
       const [kpi, vMensuales, pVendidos, sCritico, pRecientes, vCategoria, vHora] = await Promise.all([
-        getKpiData(p),
-        getVentasMensuales(p),
-        getProductosVendidos(p),
+        getKpiData(filter),
+        getVentasMensuales(filter),
+        getProductosVendidos(filter),
         getStockCritico(),
-        getPedidosRecientes(p),
-        getVentasPorCategoria(p),
-        getVentasPorHora(p)
+        getPedidosRecientes(filter),
+        getVentasPorCategoria(filter),
+        getVentasPorHora(filter)
       ])
       setData({
         kpi, ventasMensuales: vMensuales, productosVendidos: pVendidos, 
@@ -74,11 +97,13 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
-    loadData(period)
+    if (period !== 'custom') {
+      loadData(period)
+    }
   }, [period])
 
   const handleRefresh = async () => {
-    await loadData(period)
+    await loadData(period, startDate, endDate)
   }
 
   const exportToCSV = () => {
@@ -97,7 +122,17 @@ export default function AdminDashboardPage() {
       // Header
       csvContent += `REPORTE DE RENDIMIENTO - SAGUARO BAREFOOT\n`
       csvContent += `Fecha de Generación,${new Date().toLocaleString()}\n`
-      const periodLabel = period === 'today' ? 'Hoy' : period === 'week' ? 'Esta Semana' : period === 'month' ? 'Este Mes' : period === 'quarter' ? 'Trimestre' : 'Este Año'
+      let periodLabel = ''
+      if (period === 'today') periodLabel = 'Día de hoy'
+      else if (period === 'yesterday') periodLabel = 'Día de ayer'
+      else if (period === 'last24h') periodLabel = 'Últimas 24 horas'
+      else if (period === 'week') periodLabel = 'Últimos 7 días'
+      else if (period === 'last30') periodLabel = 'Últimos 30 días'
+      else if (period === 'last90') periodLabel = 'Últimos 90 días'
+      else if (period === 'last12m') periodLabel = 'Últimos 12 meses'
+      else if (period === 'ytd') periodLabel = 'Todo el año hasta la fecha'
+      else if (period === 'custom') periodLabel = `Rango personalizado (${startDate} al ${endDate})`
+      
       csvContent += `Periodo Seleccionado,${periodLabel}\n\n`
       
       // Section 1: KPIs
@@ -227,16 +262,20 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-3 no-print">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[240px]">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="today">Hoy</SelectItem>
-              <SelectItem value="week">Esta Semana</SelectItem>
-              <SelectItem value="month">Este Mes</SelectItem>
-              <SelectItem value="quarter">Trimestre</SelectItem>
-              <SelectItem value="year">Este Año</SelectItem>
+              <SelectItem value="today">Día de hoy</SelectItem>
+              <SelectItem value="yesterday">Día de ayer</SelectItem>
+              <SelectItem value="last24h">Últimas 24 horas</SelectItem>
+              <SelectItem value="week">Últimos 7 días</SelectItem>
+              <SelectItem value="last30">Últimos 30 días</SelectItem>
+              <SelectItem value="last90">Últimos 90 días</SelectItem>
+              <SelectItem value="last12m">Últimos 12 meses</SelectItem>
+              <SelectItem value="ytd">Todo el año hasta la fecha</SelectItem>
+              <SelectItem value="custom">Rango personalizado...</SelectItem>
             </SelectContent>
           </Select>
 
@@ -265,6 +304,37 @@ export default function AdminDashboardPage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Custom Date Picker Bar */}
+      {period === 'custom' && (
+        <div className="mb-6 p-4 rounded-xl border border-border bg-card/60 backdrop-blur-md flex flex-wrap items-end gap-4 animate-in fade-in slide-in-from-top-2 duration-300 no-print">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha Desde</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-input transition-all"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha Hasta</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-input transition-all"
+            />
+          </div>
+          <Button 
+            onClick={() => loadData('custom', startDate, endDate)} 
+            disabled={isRefreshing || !startDate || !endDate}
+            className="px-5 transition-all active:scale-[0.98]"
+          >
+            {isRefreshing ? 'Cargando...' : 'Aplicar Filtro'}
+          </Button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <KPICards data={data.kpi || {

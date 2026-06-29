@@ -13,9 +13,10 @@ import { getColorValue } from '@/lib/color-utils'
 interface ProductCardProps {
   product: Product
   selectedColors?: string[]
+  selectedSizes?: number[]
 }
 
-export function ProductCard({ product, selectedColors }: ProductCardProps) {
+export function ProductCard({ product, selectedColors, selectedSizes }: ProductCardProps) {
   const hasDiscount = product.descuento && product.precioOriginal
 
   // Local state to keep track of the currently selected color for displaying the image
@@ -59,20 +60,51 @@ export function ProductCard({ product, selectedColors }: ProductCardProps) {
 
   const activeImage = getProductImage()
 
+  const isSizeSoldOut = (() => {
+    if (!selectedSizes || selectedSizes.length === 0) return false
+
+    const activeColorLower = activeColor?.toLowerCase().trim()
+    const matchingKey = activeColorLower && product.tallasPorColor
+      ? Object.keys(product.tallasPorColor).find(key => key.toLowerCase().trim() === activeColorLower)
+      : null
+    const variantTallas = matchingKey && product.tallasPorColor ? product.tallasPorColor[matchingKey] : null
+
+    if (variantTallas) {
+      return selectedSizes.every(size => {
+        const tObj = variantTallas.find(t => t.talla === size)
+        return !tObj || tObj.stock <= 0
+      })
+    } else {
+      return selectedSizes.every(size => {
+        const tObj = product.tallas.find(t => t.talla === size)
+        return !tObj || tObj.stock <= 0
+      })
+    }
+  })()
+
   return (
     <Card className="group border-0 shadow-none bg-transparent">
       <Link href={`/producto/${product.id}`}>
         <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
           {activeImage && activeImage !== '/placeholder.jpg' ? (
-            <img src={activeImage} alt={product.nombre} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <img 
+              src={activeImage} 
+              alt={product.nombre} 
+              className={`h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${isSizeSoldOut ? 'opacity-50 grayscale-[25%]' : ''}`} 
+            />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+            <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50 ${isSizeSoldOut ? 'opacity-50' : ''}`}>
               <ShoppingBag className="h-16 w-16 text-muted-foreground/30" />
             </div>
           )}
 
           {/* Badges */}
-          <div className="absolute left-2 top-2 flex flex-col gap-1">
+          <div className="absolute left-2 top-2 flex flex-col gap-1 z-10">
+            {isSizeSoldOut && selectedSizes && (
+              <Badge variant="destructive" className="bg-neutral-800 text-white border-none font-bold uppercase tracking-wider text-[9px] py-1 shadow-sm">
+                {selectedSizes.length === 1 ? `Talla ${selectedSizes[0]} agotada` : 'Talla agotada'}
+              </Badge>
+            )}
             {product.nuevo && (
               <Badge className="bg-primary text-primary-foreground">Nuevo</Badge>
             )}

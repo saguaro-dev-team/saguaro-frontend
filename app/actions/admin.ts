@@ -30,7 +30,7 @@ export async function getConfiguracion() {
   }
 }
 
-export async function updateConfiguracion(envio: string, devoluciones: string) {
+export async function updateConfiguracion(envio: string, devoluciones: string): Promise<{ success: boolean; error?: string }> {
   return { success: true }
 }
 
@@ -87,6 +87,31 @@ export async function updateProductFull(id: string, data: any, adminUser?: any) 
     const precio = parseInt(data.precio_normal)
     const stock = parseInt(data.stock)
     const id_categoria = parseInt(data.id_categoria)
+
+    // Load original price and promotion details before applying updates
+    let oldPrecioNormal = 0
+    let oldPrecioOferta: number | null = null
+    let modelName = data.nombre || 'Desconocido'
+    let firstSku = 'N/A'
+    let currentStock = 0
+
+    const firstVariant = await prisma.producto.findFirst({
+      where: { id_modelo },
+      include: { color: true, talla: true }
+    })
+    if (firstVariant) {
+      oldPrecioNormal = firstVariant.precio
+      firstSku = firstVariant.codigo_sku
+      currentStock = firstVariant.stock
+      const oldPromo = await prisma.producto_promocion.findFirst({
+        where: { id_producto: firstVariant.id_producto },
+        include: { promocion: true }
+      })
+      if (oldPromo && oldPromo.promocion) {
+        const oldPct = oldPromo.promocion.porcentaje_descuento
+        oldPrecioOferta = Math.round(oldPrecioNormal * (1 - oldPct / 100))
+      }
+    }
 
     // 1. Actualizar el Modelo
     await prisma.modelo.update({
@@ -283,6 +308,79 @@ export async function updateProductFull(id: string, data: any, adminUser?: any) 
       }
     }
     
+    // 6. Sincronizar promociones/ofertas
+    const precioOferta = data.precio_oferta ? parseInt(data.precio_oferta) : null
+    if (precioOferta && precioOferta < precio && precioOferta > 0) {
+      const pct = Math.round((1 - precioOferta / precio) * 100)
+      const promoName = `Oferta ${data.nombre}`
+      
+      const promo = await prisma.promocion.create({
+        data: {
+          nombre: promoName,
+          porcentaje_descuento: pct,
+          fecha_ini: new Date(),
+          fecha_fin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        }
+      })
+
+      const variants = await prisma.producto.findMany({
+        where: { id_modelo }
+      })
+
+      for (const variant of variants) {
+        await prisma.producto_promocion.deleteMany({
+          where: { id_producto: variant.id_producto }
+        })
+
+        await prisma.producto_promocion.create({
+          data: {
+            id_producto: variant.id_producto,
+            id_promocion: promo.id_promocion,
+            activo: true
+          }
+        })
+      }
+    } else {
+      const variants = await prisma.producto.findMany({
+        where: { id_modelo }
+      })
+      const variantIds = variants.map(v => v.id_producto)
+      
+      await prisma.producto_promocion.deleteMany({
+        where: { id_producto: { in: variantIds } }
+      })
+    }
+
+    // Log price/offer changes to auditoria_stock
+    if (adminUser) {
+      let priceChangeDetails = []
+      if (oldPrecioNormal !== precio) {
+        priceChangeDetails.push(`Precio normal cambió de $${oldPrecioNormal} a $${precio}`)
+      }
+      if (oldPrecioOferta !== precioOferta) {
+        if (oldPrecioOferta === null && precioOferta !== null) {
+          priceChangeDetails.push(`Se configuró precio de oferta en $${precioOferta}`)
+        } else if (oldPrecioOferta !== null && precioOferta === null) {
+          priceChangeDetails.push(`Se eliminó el precio de oferta (precio anterior: $${oldPrecioOferta})`)
+        } else if (oldPrecioOferta !== null && precioOferta !== null) {
+          priceChangeDetails.push(`Precio de oferta cambió de $${oldPrecioOferta} a $${precioOferta}`)
+        }
+      }
+
+      if (priceChangeDetails.length > 0) {
+        const { logStockChange } = await import('./auditoria')
+        await logStockChange({
+          adminUser,
+          accion: 'MODIFICAR',
+          sku: firstSku,
+          nombreProducto: modelName,
+          detalles: `Modificación de precio/oferta: ${priceChangeDetails.join('. ')}`,
+          stockAnterior: currentStock,
+          stockNuevo: currentStock
+        })
+      }
+    }
+
     revalidatePath('/')
     revalidatePath('/admin/productos')
     return { success: true }
@@ -415,6 +513,36 @@ export async function createProduct(data: any, adminUser?: any) {
       }
     }
 
+    // 3.6 Sincronizar promociones/ofertas para el nuevo producto
+    const precioOferta = data.precio_oferta ? parseInt(data.precio_oferta) : null
+    if (precioOferta && precioOferta < precio && precioOferta > 0) {
+      const pct = Math.round((1 - precioOferta / precio) * 100)
+      const promoName = `Oferta ${data.nombre}`
+      
+      const promo = await prisma.promocion.create({
+        data: {
+          nombre: promoName,
+          porcentaje_descuento: pct,
+          fecha_ini: new Date(),
+          fecha_fin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        }
+      })
+
+      const variants = await prisma.producto.findMany({
+        where: { id_modelo: modelo.id_modelo }
+      })
+
+      for (const variant of variants) {
+        await prisma.producto_promocion.create({
+          data: {
+            id_producto: variant.id_producto,
+            id_promocion: promo.id_promocion,
+            activo: true
+          }
+        })
+      }
+    }
+
     revalidatePath('/')
     revalidatePath('/admin/productos')
     return { success: true, id: modelo.id_modelo }
@@ -424,14 +552,43 @@ export async function createProduct(data: any, adminUser?: any) {
   }
 }
 
-export async function toggleProductStatus(id: string, nuevoEstado: boolean) {
+export async function toggleProductStatus(id: string, nuevoEstado: boolean, adminUser?: any) {
   try {
     const id_modelo = parseInt(id)
+    
+    // Fetch original model and its variants before doing updates
+    const model = await prisma.modelo.findUnique({
+      where: { id_modelo },
+      include: { productos: { include: { color: true, talla: true } } }
+    })
+
+    if (!model) {
+      return { success: false, error: 'Producto no encontrado' }
+    }
+
     await prisma.modelo.update({
       where: { id_modelo },
       data: { activo: nuevoEstado }
     })
     
+    // Just log activation/deactivation in audit table with stock intact
+    if (adminUser) {
+      const { logStockChange } = await import('./auditoria')
+      for (const variant of model.productos) {
+        await logStockChange({
+          adminUser,
+          accion: nuevoEstado ? 'AGREGAR' : 'RETIRAR',
+          sku: variant.codigo_sku,
+          nombreProducto: model.nombre_modelo || 'Desconocido',
+          detalles: nuevoEstado 
+            ? `Producto activado (El stock de sus variantes permanece intacto: ${variant.stock} unidades)` 
+            : `Producto desactivado (El stock de sus variantes permanece intacto: ${variant.stock} unidades)`,
+          stockAnterior: variant.stock,
+          stockNuevo: variant.stock
+        })
+      }
+    }
+
     revalidatePath('/admin/productos')
     revalidatePath('/')
     return { success: true }
@@ -652,6 +809,95 @@ export async function uploadProductImage(modelName: string, colorName: string, b
   } catch (error: any) {
     console.error("Error al subir archivo de imagen:", error)
     return { success: false, error: error.message }
+  }
+}
+
+export async function anonymizeUser(id_usuario: number, adminUser?: any) {
+  try {
+    const userToAnon = await prisma.usuario.findUnique({
+      where: { id_usuario },
+      include: { rol: true }
+    })
+
+    if (!userToAnon) {
+      return { success: false, error: 'Usuario no encontrado' }
+    }
+
+    // 1. Evitar anonimizar administradores por seguridad
+    const rolNombre = userToAnon.rol?.nombre_rol?.toLowerCase() || ''
+    if (rolNombre === 'administrador' || rolNombre === 'admin') {
+      return { success: false, error: 'No está permitido anonimizar a un Administrador por motivos de seguridad.' }
+    }
+
+    // 2. Generar datos anónimos únicos basados en id_usuario
+    const anonymizedEmail = `eliminado_${id_usuario}@saguaro.cl`
+    const anonymizedRut = `99.999.${String(id_usuario).padStart(3, '0')}-K`
+
+    // 3. Realizar los cambios en una transacción Prisma para asegurar consistencia
+    await prisma.$transaction(async (tx) => {
+      // 3.1. Eliminar credenciales en usuario_login (destruye contraseña)
+      try {
+        await tx.usuario_login.delete({
+          where: { id_usuario }
+        })
+      } catch (e) {
+        // En caso de que no tenga login registrado (usuario de invitado)
+        console.log(`[anonymizeUser] No tenía registro de credenciales de login: ${id_usuario}`)
+      }
+
+      // 3.2. Actualizar datos en usuario
+      await tx.usuario.update({
+        where: { id_usuario },
+        data: {
+          nombres: 'Usuario',
+          primer_apellido: 'Anónimo',
+          segundo_apellido: 'Eliminado',
+          direccion_email: anonymizedEmail,
+          rut: anonymizedRut,
+          telefono: '999999999',
+          genero: 'Otro',
+          estado: false // Desactivación lógica
+        }
+      })
+
+      // 3.3. Anonimizar direcciones del usuario
+      await tx.direccion.updateMany({
+        where: { id_usuario },
+        data: {
+          calle: 'Dirección Eliminada',
+          numero: '0',
+          departamento: null,
+          detalles: null
+        }
+      })
+    })
+
+    // 4. Registrar auditoría si viene el usuario admin
+    if (adminUser) {
+      try {
+        await prisma.auditoria_stock.create({
+          data: {
+            id_usuario: adminUser.id ? parseInt(adminUser.id) || 0 : 0,
+            nombre_usuario: adminUser.nombre || 'Administrador',
+            email_usuario: adminUser.email || 'admin@saguaro.cl',
+            accion: 'ELIMINAR_USUARIO',
+            sku_producto: 'N/A',
+            nombre_producto: `Anonimización - ID ${id_usuario}`,
+            detalles: `Se ejecutó el borrado lógico y anonimización irreversible para el usuario con ID ${id_usuario}. Email de reemplazo: ${anonymizedEmail}.`,
+            stock_anterior: 0,
+            stock_nuevo: 0
+          }
+        })
+      } catch (auditError) {
+        console.error("Error al registrar auditoría de anonimización:", auditError)
+      }
+    }
+
+    revalidatePath('/admin/clientes')
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error al anonimizar usuario:", error)
+    return { success: false, error: error.message || 'Error al anonimizar usuario' }
   }
 }
 

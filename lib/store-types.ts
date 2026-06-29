@@ -16,6 +16,7 @@ export type ProductType = 'running' | 'casual' | 'trekking' | 'acuatico' | 'sand
 export interface ProductSize {
   talla: number
   stock: number
+  sku?: string
 }
 
 export interface Product {

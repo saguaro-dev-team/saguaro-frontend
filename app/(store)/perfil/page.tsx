@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck } from 'lucide-react'
+import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck, MessageSquare, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import { getUserAddresses, addAddress, updateUserProfile, getUserProfile } from 
 import { getRegiones } from '@/app/actions/location'
 import { getUserOrders } from '@/app/actions/orders'
 import { cleanChileanPhone } from '@/lib/utils'
+import { getUserContactMessages } from '@/app/actions/contact'
 
 // We will use real orders now
 
@@ -65,6 +66,10 @@ function ProfileContent() {
   const [regionesData, setRegionesData] = useState<any[]>([])
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null)
 
+  // Mensajes State
+  const [userMessages, setUserMessages] = useState<any[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading) {
@@ -103,6 +108,18 @@ function ProfileContent() {
       }
     }
   }, [isLoading, isAuthenticated, user, router])
+
+  useEffect(() => {
+    if (user && activeTab === 'mensajes') {
+      setLoadingMessages(true)
+      getUserContactMessages(user.id, user.email).then(res => {
+        if (res.success && res.messages) {
+          setUserMessages(res.messages)
+        }
+        setLoadingMessages(false)
+      })
+    }
+  }, [activeTab, user])
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -233,7 +250,7 @@ function ProfileContent() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
             <TabsTrigger value="datos" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Datos</span>
@@ -245,6 +262,10 @@ function ProfileContent() {
             <TabsTrigger value="direcciones" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               <span className="hidden sm:inline">Direcciones</span>
+            </TabsTrigger>
+            <TabsTrigger value="mensajes" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Mensajes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -591,6 +612,84 @@ function ProfileContent() {
                     </Button>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Mensajes */}
+          <TabsContent value="mensajes">
+            <Card>
+              <CardHeader>
+                <CardTitle>Buzón de Consultas</CardTitle>
+                <CardDescription>
+                  Revisa el historial de tus mensajes y las respuestas de nuestro equipo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingMessages ? (
+                  <div className="text-center py-12 text-muted-foreground animate-pulse">
+                    Cargando historial de mensajes...
+                  </div>
+                ) : userMessages.length > 0 ? (
+                  <div className="space-y-6">
+                    {userMessages.map((msg) => (
+                      <div key={msg.id} className="border rounded-2xl p-5 space-y-4 hover:shadow-sm transition-shadow">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-semibold capitalize">
+                              {msg.motivo === 'soporte' ? 'Soporte / Pedido' :
+                               msg.motivo === 'tallas' ? 'Duda Tallas' :
+                               msg.motivo === 'trabaja' ? 'Postulación' :
+                               msg.motivo === 'mayorista' ? 'Mayorista' : 'Otro'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(msg.fecha).toLocaleString('es-CL')}
+                            </span>
+                          </div>
+                          <div>
+                            {msg.respondido ? (
+                              <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white">Respondido</Badge>
+                            ) : (
+                              <Badge variant="secondary">Recibido (Pendiente)</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Tu Consulta:</p>
+                          <p className="text-sm bg-muted/30 p-3.5 rounded-xl border border-muted/50 whitespace-pre-wrap leading-relaxed">
+                            {msg.mensaje}
+                          </p>
+                        </div>
+
+                        {msg.respondido && msg.respuesta && (
+                          <div className="space-y-1 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                            <p className="text-xs font-bold uppercase text-primary tracking-wider flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              Respuesta del Equipo Saguaro:
+                            </p>
+                            <p className="text-sm text-foreground whitespace-pre-wrap italic leading-relaxed pt-1">
+                              {msg.respuesta}
+                            </p>
+                            {msg.fecha_respuesta && (
+                              <p className="text-[10px] text-muted-foreground pt-2 text-right">
+                                Respondido el {new Date(msg.fecha_respuesta).toLocaleString('es-CL')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                    <p className="text-muted-foreground">Aún no has enviado ninguna consulta.</p>
+                    <Button className="mt-4" asChild>
+                      <Link href="/contacto">Ir al Centro de Ayuda</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,9 +15,37 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useCart } from '@/lib/cart-context'
 import { formatPrice } from '@/lib/store-data'
+import { checkCartStock } from '@/app/actions/products'
 
 export function CartSheet() {
   const { items, total, isOpen, closeCart, updateQuantity, removeItem } = useCart()
+  const [stockChecks, setStockChecks] = useState<any[]>([])
+  const [checkingStock, setCheckingStock] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && items.length > 0) {
+      setCheckingStock(true)
+      const payload = items.map(item => ({
+        id: item.producto.id,
+        talla: item.talla,
+        color: item.color,
+        cantidad: item.cantidad
+      }))
+      checkCartStock(payload).then(res => {
+        if (res.success && res.stockStates) {
+          setStockChecks(res.stockStates)
+        }
+        setCheckingStock(false)
+      }).catch(err => {
+        console.error("Error checking stock:", err)
+        setCheckingStock(false)
+      })
+    } else if (items.length === 0) {
+      setStockChecks([])
+    }
+  }, [isOpen, items])
+
+  const hasAnyStockError = stockChecks.some(c => !c.hasEnoughStock)
 
   return (
     <Sheet open={isOpen} onOpenChange={closeCart}>
@@ -99,6 +128,20 @@ export function CartSheet() {
                         Talla: {item.talla} | Color: {item.color}
                       </p>
 
+                      {(() => {
+                        const check = stockChecks.find(c => c.id === item.producto.id && c.talla === item.talla && c.color === item.color)
+                        if (check && !check.hasEnoughStock) {
+                          return (
+                            <p className="text-xs text-destructive font-semibold mt-1">
+                              {check.stock === 0 
+                                ? '¡Producto agotado!' 
+                                : `Stock insuficiente (Quedan ${check.stock} unidades)`}
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
+
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-1">
                           <Button
@@ -172,10 +215,14 @@ export function CartSheet() {
               </div>
 
               <SheetFooter className="mt-4 flex-col gap-2 sm:flex-col">
-                <Button className="w-full" size="lg" asChild>
-                  <Link href="/checkout" onClick={closeCart}>
-                    Proceder al Pago
-                  </Link>
+                <Button className="w-full" size="lg" disabled={hasAnyStockError} asChild={!hasAnyStockError}>
+                  {hasAnyStockError ? (
+                    <span>Resolver stock insuficiente</span>
+                  ) : (
+                    <Link href="/checkout" onClick={closeCart}>
+                      Proceder al Pago
+                    </Link>
+                  )}
                 </Button>
                 <Button variant="outline" className="w-full" onClick={closeCart}>
                   Continuar Comprando

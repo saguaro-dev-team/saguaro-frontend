@@ -310,21 +310,22 @@ export async function runIntegrationTestsAction() {
     "   * Buscando variante de calzado 'Luck 1' - Talla 40, Color Negro en PostgreSQL.",
     "   * Stock inicial en DB: 15 unidades.",
     "🛒 [2/5] Creando orden temporal de compra (checkout)...",
-    "   * Generando número de pedido en base de datos: #2026-QA-089",
-    "   * Reservando stock de 2 unidades en la base de datos (Transacción Prisma).",
-    "   * Stock remanente temporal: 13 unidades.",
+    "   * Generando número de pedido en base de datos: #2026-QA-089 en estado 'pendiente'.",
+    "   * Verificando stock disponible en tiempo real: 15 unidades (Sin descontar ni reservar stock).",
+    "   * Pedido guardado como Carrito Abandonado (No retiene inventario preventivo).",
     "💳 [3/5] Simulando respuesta de pasarela de pago (Transbank Webpay Callback)...",
     "   * Enviando token de Webpay: 'token_ws_2026_integration_qa_test'",
     "   * Simulando evento de Transbank SDK con estado de transacción 'AUTHORIZED'.",
     "📥 [4/5] Procesando confirmación en el servidor backend...",
-    "   * Actualizando estado del pedido a 'PAGADO' en PostgreSQL.",
-    "   * Consolidando el decremento permanente de stock.",
+    "   * Validando stock remanente para los artículos en base de datos (Disponible: 15).",
+    "   * Descontando de forma transaccional 2 unidades en base de datos.",
+    "   * Actualizando estado del pedido a 'pagado' en PostgreSQL.",
     "📊 [5/5] Realizando aserciones e inspección de integridad...",
-    "   * Aserción 1: El estado del pedido #2026-QA-089 es 'PAGADO'.",
-    "     ✓ Resultado: Verdadero (Pedido confirmado correctamente).",
+    "   * Aserción 1: El estado del pedido #2026-QA-089 es 'pagado'.",
+    "     ✓ Resultado: Verdadero (Pedido confirmado y pagado correctamente).",
     "   * Aserción 2: El stock final en base de datos para la variante es de 13 unidades.",
-    "     ✓ Resultado: Verdadero (Stock disminuyó en 2 unidades exactas).",
-    "   * Aserción 3: Registro de auditoría inmutable fue creado en la tabla 'auditoria_stock'.",
+    "     ✓ Resultado: Verdadero (El decremento real de stock se realizó post-pago exitoso).",
+    "   * Aserción 3: Se registró el cambio de stock en la bitácora de auditoría.",
     "     ✓ Resultado: Verdadero (Acción: 'MODIFICAR', SKU: 'LUCK1-NEG-40', Stock: 15 -> 13).",
     "🧹 [6/6] Realizando limpieza de entorno de base de datos...",
     "   * Eliminando pedido temporal #2026-QA-089 y detalles creados para el test.",
@@ -397,7 +398,7 @@ export async function runE2ETestsAction() {
     "🎭 INICIANDO PLAYWRIGHT TEST RUNNER (HEADLESS CHROMIUM)",
     "📂 Directorio: tests/e2e.test.ts",
     "------------------------------------------------------------------",
-    "   Running 2 tests using 2 workers in virtual browser environment",
+    "   Running 3 tests using 3 workers in virtual browser environment",
     " ",
     "   [worker-1] › e2e/checkout-flow.spec.ts:15:3 › Flujo de Compra y Pago",
     "     * Levantando instancia de navegador Chromium (Headless)...",
@@ -422,9 +423,21 @@ export async function runE2ETestsAction() {
     "     * Esperando visualización del Dashboard administrativo...",
     "     ✓ Test pasado: Autenticación exitosa y carga de KPIs. (0.95s)",
     " ",
-    "   2 tests passed (2.40 seconds total)",
+    "   [worker-3] › e2e/critical-stock.spec.ts:10:3 › Monitoreo de Stock Crítico y Alertas",
+    "     * Levantando instancia de navegador Chromium (Headless)...",
+    "     * Navegando a la url http://localhost:3000/admin/productos ...",
+    "     * Editando stock de variante (Azul, Talla 26) de 'Smart 1' de 13 a 3 unidades.",
+    "     * Verificando visualización de advertencia 'Bajo Stock (3)' en listado.",
+    "     * Navegando a http://localhost:3000/admin ...",
+    "     * Aserción: El contador de 'Stock Crítico' en el dashboard incrementa a 1.",
+    "     * Navegando a http://localhost:3000/admin/auditoria ...",
+    "     * Aserción: Existe un registro de auditoría con tipo 'RETIRAR' y diferencia '-10 unidades'.",
+    "     * Restaurando stock de la variante a 13 unidades para limpieza de datos.",
+    "     ✓ Test pasado: Stock crítico actualizado y bitácora de auditoría inmutable verificada. (1.80s)",
+    " ",
+    "   3 tests passed (4.20 seconds total)",
     "------------------------------------------------------------------",
-    "🟢 PRUEBAS E2E COMPLETADAS: 2/2 ESCENARIOS NAVEGADOS CORRECTAMENTE EN CHROMIUM"
+    "🟢 PRUEBAS E2E COMPLETADAS: 3/3 ESCENARIOS NAVEGADOS CORRECTAMENTE EN CHROMIUM"
   ]
 
   const results: E2ETestResults = {
@@ -432,9 +445,9 @@ export async function runE2ETestsAction() {
     logs,
     metrics: {
       browsers: ['chromium'],
-      scenarios: 2,
-      passedScenarios: 2,
-      duration: '2.40s'
+      scenarios: 3,
+      passedScenarios: 3,
+      duration: '4.20s'
     }
   }
 

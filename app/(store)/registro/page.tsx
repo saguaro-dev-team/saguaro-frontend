@@ -198,7 +198,7 @@ function RegisterContent() {
         <div className="text-center mb-8">
           <Link href="/">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_2-emd0nRIpusHh6GoYU8XlNziXq5fEYd.jpg"
+              src="/images/saguarologo.png"
               alt="Saguaro Chile"
               width={300}
               height={90}

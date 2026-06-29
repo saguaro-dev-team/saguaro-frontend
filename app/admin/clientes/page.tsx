@@ -42,11 +42,13 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { getUsuarios, getUsuarioDetalles, updateUserRole } from '@/app/actions/admin'
+import { getUsuarios, getUsuarioDetalles, updateUserRole, anonymizeUser } from '@/app/actions/admin'
+import { useAuth } from '@/lib/auth-context'
 
 import { formatPrice } from '@/lib/store-data'
 
 export default function AdminClientesPage() {
+  const { user } = useAuth()
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,7 +64,7 @@ export default function AdminClientesPage() {
     setLoading(true)
     const res = await getUsuarios()
     if (res.success) {
-      setUsuarios(res.usuarios)
+      setUsuarios(res.usuarios || [])
     }
     setLoading(false)
   }
@@ -269,7 +271,7 @@ export default function AdminClientesPage() {
                     </div>
                 </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button 
                             variant="outline" 
                             size="sm"
@@ -286,6 +288,32 @@ export default function AdminClientesPage() {
                         >
                             Cambiar a {selectedUser.rol?.nombre_rol === 'admin' ? 'Usuario' : 'Admin'}
                         </Button>
+                        {selectedUser.estado && selectedUser.rol?.nombre_rol !== 'admin' && (
+                            <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={async () => {
+                                    if(confirm("¡ATENCIÓN! Esta acción es irreversible.\n¿Estás seguro de que deseas anonimizar y desactivar permanentemente a este usuario? Se destruirán sus credenciales de acceso y sus datos personales serán reemplazados por registros genéricos.")) {
+                                        const adminData = user ? {
+                                            id: String(user.id),
+                                            nombre: `${user.nombre} ${user.apellido}`.trim(),
+                                            email: user.email
+                                        } : undefined
+
+                                        const res = await anonymizeUser(selectedUser.id_usuario, adminData)
+                                        if(res.success) {
+                                            alert("El usuario ha sido anonimizado y desactivado exitosamente.")
+                                            setDetailsOpen(false)
+                                            loadUsers()
+                                        } else {
+                                            alert(res.error || "Ocurrió un error al intentar anonimizar.")
+                                        }
+                                    }
+                                }}
+                            >
+                                Eliminar Cuenta (Anonimizar)
+                            </Button>
+                        )}
                     </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -25,7 +25,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog'
-import { replyToMessage } from '@/app/actions/contact'
+import { replyToMessage, markMessageAsRead } from '@/app/actions/contact'
 
 interface Message {
   id: string
@@ -53,7 +53,38 @@ export function MessagesList({ initialMessages }: MessagesListProps) {
   const [replyText, setReplyText] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'nuevos' | 'respondidos'>('todos')
   const { toast } = useToast()
+
+  const handleMarkAsRead = (id: string) => {
+    startTransition(async () => {
+      try {
+        const res = await markMessageAsRead(id)
+        if (res.success) {
+          setMessages(prev => prev.map(m => {
+            if (m.id !== id) return m
+            return { ...m, leido: true }
+          }))
+          toast({
+            title: "Mensaje leído",
+            description: "El mensaje ha sido marcado como leído.",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: res.error || "No se pudo marcar como leído.",
+            variant: "destructive"
+          })
+        }
+      } catch (e: any) {
+        toast({
+          title: "Error",
+          description: e.message || "Ocurrió un error inesperado.",
+          variant: "destructive"
+        })
+      }
+    })
+  }
 
   // Mapear motivos a etiquetas y colores
   const getMotivoLabel = (motivo: string) => {
@@ -62,6 +93,7 @@ export function MessagesList({ initialMessages }: MessagesListProps) {
       case 'tallas': return { text: 'Dudas Tallas', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' }
       case 'trabaja': return { text: 'Postulación Trabajo', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' }
       case 'mayorista': return { text: 'Mayorista / Colaboración', color: 'bg-green-500/10 text-green-500 border-green-500/20' }
+      case 'newsletter': return { text: 'Suscripción Boletín', color: 'bg-pink-500/10 text-pink-500 border-pink-500/20' }
       default: return { text: 'Otro Motivo', color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20' }
     }
   }
@@ -114,9 +146,54 @@ export function MessagesList({ initialMessages }: MessagesListProps) {
     })
   }
 
+  const filteredMessages = messages.filter(msg => {
+    if (statusFilter === 'nuevos') return !msg.leido
+    if (statusFilter === 'respondidos') return msg.respondido
+    return true
+  })
+
   return (
-    <div className="grid gap-6">
-      {messages.map((msg) => {
+    <div className="space-y-6">
+      {/* Filtros de Estado */}
+      <div className="flex flex-wrap gap-2 border-b pb-4 items-center">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-2">Filtrar estado:</span>
+        <Button
+          variant={statusFilter === 'todos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('todos')}
+          className="rounded-full"
+        >
+          Todos
+        </Button>
+        <Button
+          variant={statusFilter === 'nuevos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('nuevos')}
+          className="rounded-full gap-2"
+        >
+          <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+          No leídos
+        </Button>
+        <Button
+          variant={statusFilter === 'respondidos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('respondidos')}
+          className="rounded-full gap-2"
+        >
+          <CheckCircle className="h-4 w-4 text-emerald-500" />
+          Respondidos
+        </Button>
+      </div>
+
+      <div className="grid gap-6">
+        {filteredMessages.length === 0 ? (
+          <div className="text-center py-20 bg-muted/30 rounded-3xl border border-dashed w-full">
+            <Mail className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+            <h3 className="text-lg font-medium">Bandeja vacía</h3>
+            <p className="text-muted-foreground">No se encontraron mensajes en esta categoría.</p>
+          </div>
+        ) : (
+          filteredMessages.map((msg) => {
         const motivoInfo = getMotivoLabel(msg.motivo)
         return (
           <Card 
@@ -224,7 +301,20 @@ export function MessagesList({ initialMessages }: MessagesListProps) {
                 </div>
 
                 {/* Actions */}
-                <div className="mt-6 pt-4 border-t flex justify-end gap-3">
+                <div className="mt-6 pt-4 border-t flex justify-end gap-3 items-center">
+                  {!msg.leido && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleMarkAsRead(msg.id)}
+                      disabled={isPending}
+                      className="gap-2 text-muted-foreground hover:text-foreground mr-auto"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Marcar como leído
+                    </Button>
+                  )}
+                  
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -249,7 +339,9 @@ export function MessagesList({ initialMessages }: MessagesListProps) {
             </div>
           </Card>
         )
-      })}
+      })
+    )}
+  </div>
 
       {/* Reply Dialog Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

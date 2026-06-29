@@ -8,49 +8,107 @@ import type {
   StockCritico 
 } from '@/lib/types'
 
-export type Period = 'today' | 'week' | 'month' | 'quarter' | 'year'
+export type Period = 
+  | 'today'          // Día de hoy (calendario)
+  | 'yesterday'      // Día de ayer (calendario)
+  | 'last24h'        // Últimas 24 horas (rodante)
+  | 'week'           // Últimos 7 días (rodante)
+  | 'last30'         // Últimos 30 días (rodante)
+  | 'last90'         // Últimos 90 días (rodante)
+  | 'last12m'        // Últimos 12 meses (rodante)
+  | 'ytd'            // Todo el año hasta la fecha (YTD)
+  | 'custom'         // Personalizado
 
-/** Retorna la fecha de inicio según el período elegido */
-function getDateFrom(period: Period): Date {
+export interface DashboardFilter {
+  period: Period
+  startDate?: string // YYYY-MM-DD
+  endDate?: string   // YYYY-MM-DD
+}
+
+/** Retorna el rango de fechas (inicio y fin) según el período o filtro personalizado */
+function getDateRange(filter: DashboardFilter): { dateFrom: Date, dateTo: Date } {
   const now = new Date()
-  switch (period) {
+  const dateTo = new Date(now)
+  dateTo.setHours(23, 59, 59, 999) // Fin del día actual por defecto
+
+  switch (filter.period) {
     case 'today': {
-      const d = new Date(now)
-      d.setHours(0, 0, 0, 0)
-      return d
+      const dateFrom = new Date(now)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
+    }
+    case 'yesterday': {
+      const dateFrom = new Date(now)
+      dateFrom.setDate(dateFrom.getDate() - 1)
+      dateFrom.setHours(0, 0, 0, 0)
+      
+      const yesterdayTo = new Date(now)
+      yesterdayTo.setDate(yesterdayTo.getDate() - 1)
+      yesterdayTo.setHours(23, 59, 59, 999)
+      return { dateFrom, dateTo: yesterdayTo }
+    }
+    case 'last24h': {
+      const dateFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      return { dateFrom, dateTo: now }
     }
     case 'week': {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 7)
-      d.setHours(0, 0, 0, 0)
-      return d
+      const dateFrom = new Date(now)
+      dateFrom.setDate(dateFrom.getDate() - 7)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
     }
-    case 'month': {
-      const d = new Date(now)
-      d.setDate(1)
-      d.setHours(0, 0, 0, 0)
-      return d
+    case 'last30': {
+      const dateFrom = new Date(now)
+      dateFrom.setDate(dateFrom.getDate() - 30)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
     }
-    case 'quarter': {
-      const d = new Date(now)
-      d.setMonth(d.getMonth() - 3)
-      d.setHours(0, 0, 0, 0)
-      return d
+    case 'last90': {
+      const dateFrom = new Date(now)
+      dateFrom.setDate(dateFrom.getDate() - 90)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
     }
-    case 'year': {
-      const d = new Date(now.getFullYear(), 0, 1) // 1 enero año actual
-      return d
+    case 'last12m': {
+      const dateFrom = new Date(now)
+      dateFrom.setFullYear(dateFrom.getFullYear() - 1)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
+    }
+    case 'ytd': {
+      const dateFrom = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+      return { dateFrom, dateTo }
+    }
+    case 'custom': {
+      const dateFrom = filter.startDate ? new Date(filter.startDate + 'T00:00:00') : new Date(now)
+      const customTo = filter.endDate ? new Date(filter.endDate + 'T23:59:59') : new Date(now)
+      
+      if (isNaN(dateFrom.getTime())) {
+        dateFrom.setTime(now.getTime())
+        dateFrom.setHours(0, 0, 0, 0)
+      }
+      if (isNaN(customTo.getTime())) {
+        customTo.setTime(now.getTime())
+        customTo.setHours(23, 59, 59, 999)
+      }
+      return { dateFrom, dateTo: customTo }
+    }
+    default: {
+      const dateFrom = new Date(now)
+      dateFrom.setDate(dateFrom.getDate() - 30)
+      dateFrom.setHours(0, 0, 0, 0)
+      return { dateFrom, dateTo }
     }
   }
 }
 
-export async function getKpiData(period: Period = 'month'): Promise<KPIData> {
-  const dateFrom = getDateFrom(period)
+export async function getKpiData(filter: DashboardFilter = { period: 'last30' }): Promise<KPIData> {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const pedidos = await prisma.pedido.findMany({
     where: { 
-      estado: { not: 'cancelado' },
-      fecha_pedido: { gte: dateFrom }
+      estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] },
+      fecha_pedido: { gte: dateFrom, lte: dateTo }
     }
   })
   
@@ -94,32 +152,22 @@ export async function getKpiData(period: Period = 'month'): Promise<KPIData> {
   }
 }
 
-export async function getVentasMensuales(period: Period = 'month'): Promise<VentasMensuales[]> {
-  const dateFrom = getDateFrom(period)
+export async function getVentasMensuales(filter: DashboardFilter = { period: 'last30' }): Promise<VentasMensuales[]> {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const pedidos = await prisma.pedido.findMany({
     where: { 
-      estado: { not: 'cancelado' },
-      fecha_pedido: { gte: dateFrom }
+      estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] },
+      fecha_pedido: { gte: dateFrom, lte: dateTo }
     },
     select: { fecha_pedido: true, total: true }
   })
 
-  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-  const map = new Map<string, {ventas: number, pedidos: number}>()
-  
-  meses.forEach(m => map.set(m, { ventas: 0, pedidos: 0 }))
+  const diffTime = Math.abs(dateTo.getTime() - dateFrom.getTime())
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-  pedidos.forEach(p => {
-    const mesIndex = p.fecha_pedido.getMonth()
-    const mes = meses[mesIndex]
-    const data = map.get(mes)!
-    data.ventas += p.total
-    data.pedidos += 1
-  })
-
-  // Para "today" o "week", agrupar por día en vez de mes
-  if (period === 'today') {
+  // 1. Agrupación por Hora (Rango de 2 días o menos)
+  if (diffDays <= 2) {
     const hours = Array.from({length: 24}, (_, i) => i) // 00:00 a 23:00
     const hourMap = new Map<string, {ventas: number, pedidos: number}>()
     hours.forEach(h => hourMap.set(`${h.toString().padStart(2,'0')}:00`, { ventas: 0, pedidos: 0 }))
@@ -135,16 +183,18 @@ export async function getVentasMensuales(period: Period = 'month'): Promise<Vent
     return Array.from(hourMap.entries()).map(([mes, v]) => ({ mes, ...v }))
   }
 
-  if (period === 'week') {
+  // 2. Agrupación por Día (Rango de 2 a 31 días)
+  if (diffDays <= 31) {
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
     const dayMap = new Map<string, {ventas: number, pedidos: number}>()
-    // últimos 7 días en orden
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = `${days[d.getDay()]} ${d.getDate()}`
+    
+    const temp = new Date(dateFrom)
+    while (temp <= dateTo) {
+      const key = `${days[temp.getDay()]} ${temp.getDate()}`
       dayMap.set(key, { ventas: 0, pedidos: 0 })
+      temp.setDate(temp.getDate() + 1)
     }
+
     pedidos.forEach(p => {
       const d = p.fecha_pedido
       const key = `${days[d.getDay()]} ${d.getDate()}`
@@ -157,20 +207,59 @@ export async function getVentasMensuales(period: Period = 'month'): Promise<Vent
     return Array.from(dayMap.entries()).map(([mes, v]) => ({ mes, ...v }))
   }
 
-  return meses.map(mes => ({
-    mes,
-    ventas: map.get(mes)!.ventas,
-    pedidos: map.get(mes)!.pedidos
-  }))
+  // 3. Agrupación por Mes (Rango mayor a 31 días)
+  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  const map = new Map<string, {ventas: number, pedidos: number}>()
+  
+  const temp = new Date(dateFrom)
+  temp.setDate(1) // primer día del mes
+  
+  let iterations = 0
+  while (temp <= dateTo && iterations < 36) {
+    const label = `${meses[temp.getMonth()]} ${temp.getFullYear().toString().substring(2)}`
+    map.set(label, { ventas: 0, pedidos: 0 })
+    temp.setMonth(temp.getMonth() + 1)
+    iterations++
+  }
+  
+  if (map.size === 0) {
+    meses.forEach(m => map.set(m, { ventas: 0, pedidos: 0 }))
+    pedidos.forEach(p => {
+      const mesIndex = p.fecha_pedido.getMonth()
+      const mes = meses[mesIndex]
+      const data = map.get(mes)!
+      data.ventas += p.total
+      data.pedidos += 1
+    })
+    return meses.map(mes => ({
+      mes,
+      ventas: map.get(mes)!.ventas,
+      pedidos: map.get(mes)!.pedidos
+    }))
+  }
+
+  pedidos.forEach(p => {
+    const d = p.fecha_pedido
+    const label = `${meses[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`
+    if (map.has(label)) {
+      const data = map.get(label)!
+      data.ventas += p.total
+      data.pedidos += 1
+    }
+  })
+  return Array.from(map.entries()).map(([mes, v]) => ({ mes, ...v }))
 }
 
-export async function getProductosVendidos(period: Period = 'month'): Promise<ProductoVendido[]> {
-  const dateFrom = getDateFrom(period)
+export async function getProductosVendidos(filter: DashboardFilter = { period: 'last30' }): Promise<ProductoVendido[]> {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const articulos = await prisma.articulo_pedido.findMany({
     where: {
       producto: { modelo: { activo: true } },
-      pedido: { fecha_pedido: { gte: dateFrom }, estado: { not: 'cancelado' } }
+      pedido: { 
+        fecha_pedido: { gte: dateFrom, lte: dateTo }, 
+        estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] } 
+      }
     },
     include: {
       producto: {
@@ -210,7 +299,6 @@ export async function getStockCritico(): Promise<StockCritico[]> {
       color: true,
       talla: true
     },
-    take: 5,
     orderBy: { stock: 'asc' }
   })
 
@@ -224,7 +312,7 @@ export async function getStockCritico(): Promise<StockCritico[]> {
       id_producto: { in: productIds },
       pedido: {
         fecha_pedido: { gte: thirtyDaysAgo },
-        estado: { not: 'cancelado' }
+        estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] }
       }
     },
     select: {
@@ -246,6 +334,7 @@ export async function getStockCritico(): Promise<StockCritico[]> {
     return {
       id_producto: c.id_producto,
       nombre: `${c.modelo.nombre_modelo} - ${c.talla.nombre_talla} ${c.color.nombre_color}`,
+      codigo_sku: c.codigo_sku,
       stock: c.stock,
       velocidadVenta,
       diasRestantes
@@ -253,13 +342,16 @@ export async function getStockCritico(): Promise<StockCritico[]> {
   })
 }
 
-export async function getVentasPorCategoria(period: Period = 'month') {
-  const dateFrom = getDateFrom(period)
+export async function getVentasPorCategoria(filter: DashboardFilter = { period: 'last30' }) {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const articulos = await prisma.articulo_pedido.findMany({
     where: {
       producto: { modelo: { activo: true } },
-      pedido: { fecha_pedido: { gte: dateFrom }, estado: { not: 'cancelado' } }
+      pedido: { 
+        fecha_pedido: { gte: dateFrom, lte: dateTo }, 
+        estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] } 
+      }
     },
     include: {
       producto: {
@@ -289,14 +381,14 @@ export async function getVentasPorCategoria(period: Period = 'month') {
   })).sort((a,b) => b.ventas - a.ventas)
 }
 
-export async function getPedidosRecientes(period: Period = 'month') {
-  const dateFrom = getDateFrom(period)
+export async function getPedidosRecientes(filter: DashboardFilter = { period: 'last30' }) {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const pedidos = await prisma.pedido.findMany({
     take: 10,
     orderBy: { fecha_pedido: 'desc' },
     where: { 
-      fecha_pedido: { gte: dateFrom },
+      fecha_pedido: { gte: dateFrom, lte: dateTo },
       estado: { not: 'cancelado' }
     },
     include: { usuario: true }
@@ -315,13 +407,13 @@ export async function getPedidosRecientes(period: Period = 'month') {
   }))
 }
 
-export async function getVentasPorHora(period: Period = 'month') {
-  const dateFrom = getDateFrom(period)
+export async function getVentasPorHora(filter: DashboardFilter = { period: 'last30' }) {
+  const { dateFrom, dateTo } = getDateRange(filter)
 
   const pedidos = await prisma.pedido.findMany({
     where: { 
-      estado: { not: 'cancelado' },
-      fecha_pedido: { gte: dateFrom }
+      estado: { in: ['pagado', 'preparando', 'enviado', 'entregado'] },
+      fecha_pedido: { gte: dateFrom, lte: dateTo }
     },
     select: { fecha_pedido: true }
   })

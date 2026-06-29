@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Eye, MoreHorizontal, Package, Truck, CheckCircle, Clock } from 'lucide-react'
+import { Search, Eye, MoreHorizontal, Package, Truck, CheckCircle, Clock, FileDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getAdminOrders, updateOrderStatus } from '@/app/actions/orders'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -97,12 +99,12 @@ const mockOrders = [
 ]
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
-  pendiente: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  pendiente: { label: 'Carrito Abandonado', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
   pagado: { label: 'Pagado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
   preparando: { label: 'Preparando', color: 'bg-blue-100 text-blue-800', icon: Package },
   enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-800', icon: Truck },
   entregado: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-800', icon: Clock },
+  cancelado: { label: 'Carrito Abandonado (Cancelado)', color: 'bg-red-100 text-red-800', icon: Clock },
 }
 
 export default function AdminOrdersPage() {
@@ -144,7 +146,18 @@ export default function AdminOrdersPage() {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.cliente.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || order.estado === statusFilter
+      
+    let matchesStatus = false
+    if (statusFilter === 'all') {
+      matchesStatus = true
+    } else if (statusFilter === 'completados') {
+      matchesStatus = ['pagado', 'preparando', 'enviado', 'entregado'].includes(order.estado)
+    } else if (statusFilter === 'abandonados') {
+      matchesStatus = ['pendiente', 'cancelado'].includes(order.estado)
+    } else {
+      matchesStatus = order.estado === statusFilter
+    }
+    
     return matchesSearch && matchesStatus
   })
 
@@ -154,6 +167,115 @@ export default function AdminOrdersPage() {
       currency: 'CLP',
       minimumFractionDigits: 0,
     }).format(price)
+  }
+
+  const downloadReceiptPDF = (order: any) => {
+    const doc = new jsPDF()
+
+    // Add Logo or Header Title
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(22)
+    doc.setTextColor(0, 0, 0)
+    doc.text('BOLETA ELECTRÓNICA', 14, 25)
+
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(80)
+    doc.text(`Nº Pedido: ${order.id}`, 14, 32)
+    doc.text(`Fecha Emisión: ${new Date(order.fecha).toLocaleDateString('es-CL')}`, 14, 37)
+
+    // Divider Line
+    doc.setDrawColor(220, 220, 220)
+    doc.line(14, 42, 196, 42)
+
+    // Seller Info
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(0, 0, 0)
+    doc.text('Emisor:', 14, 50)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text('Comercial Saguaro Limitada', 14, 56)
+    doc.text('R.U.T.: 76.543.210-K', 14, 61)
+    doc.text('Av. Vitacura 1234, Santiago, Chile', 14, 66)
+
+    // Buyer Info
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text('Cliente:', 110, 50)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(order.cliente, 110, 56)
+    doc.text(order.email, 110, 61)
+    doc.text(`Teléfono: ${order.telefono}`, 110, 66)
+
+    // Shipping Info
+    if (order.direccion) {
+      doc.text(`Despacho: ${order.direccion.calle} ${order.direccion.numero}`, 110, 71)
+      doc.text(`${order.direccion.comuna}, ${order.direccion.region}`, 110, 76)
+    }
+
+    // Divider Line
+    doc.line(14, 82, 196, 82)
+
+    // Define table columns
+    const tableColumn = ["Producto", "Color", "Talla", "SKU", "Cant.", "Precio Unit.", "Subtotal"]
+
+    // Define table rows
+    const tableRows = order.articulos.map((art: any) => {
+      const subtotal = art.precio * art.cantidad
+      return [
+        art.nombre,
+        art.color,
+        art.talla,
+        art.sku || 'N/A',
+        art.cantidad.toString(),
+        formatPrice(art.precio),
+        formatPrice(subtotal)
+      ]
+    })
+
+    // Start autoTable
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 88,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [0, 0, 0] }, // Black header style
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 15, halign: 'center' },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 15, halign: 'center' },
+        5: { cellWidth: 25, halign: 'right' },
+        6: { cellWidth: 25, halign: 'right' }
+      }
+    })
+
+    // Totals Calculation at the end
+    const lastY = (doc as any).lastAutoTable.finalY || 120
+    
+    doc.setFont("helvetica", "normal")
+    doc.text("Neto:", 145, lastY + 12)
+    doc.text("IVA (19%):", 145, lastY + 17)
+    
+    doc.setFont("helvetica", "bold")
+    doc.text("Total CLP:", 145, lastY + 24)
+
+    // Calculate details
+    const netAmount = Math.round(order.total / 1.19)
+    const ivAmount = order.total - netAmount
+
+    doc.setFont("helvetica", "normal")
+    doc.text(formatPrice(netAmount), 195, lastY + 12, { align: 'right' })
+    doc.text(formatPrice(ivAmount), 195, lastY + 17, { align: 'right' })
+    
+    doc.setFont("helvetica", "bold")
+    doc.text(formatPrice(order.total), 195, lastY + 24, { align: 'right' })
+
+    // Save PDF
+    doc.save(`boleta-${order.id}.pdf`)
   }
 
   const getOrderStats = () => {
@@ -247,6 +369,8 @@ export default function AdminOrdersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="completados">Pedidos Completados</SelectItem>
+            <SelectItem value="abandonados">Carritos Abandonados</SelectItem>
             <SelectItem value="pendiente">Pendiente</SelectItem>
             <SelectItem value="pagado">Pagado</SelectItem>
             <SelectItem value="preparando">Preparando</SelectItem>
@@ -333,14 +457,14 @@ export default function AdminOrdersPage() {
                               Ver detalles
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pendiente')}>Marcar como Pendiente</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pendiente')}>Marcar como Carrito Abandonado</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'pagado')}>Marcar como Pagado</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'preparando')}>Marcar como Preparando</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'enviado')}>Marcar como Enviado</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(order.id_raw, 'entregado')}>Marcar como Entregado</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive" onClick={() => handleStatusChange(order.id_raw, 'cancelado')}>
-                              Cancelar pedido
+                              Marcar como Cancelado
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -361,8 +485,18 @@ export default function AdminOrdersPage() {
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold flex items-center justify-between flex-wrap gap-2 w-full pr-6">
               <span>Detalle de Pedido: <span className="font-mono text-primary">{selectedOrder?.id}</span></span>
+              {selectedOrder && (
+                <Button
+                  onClick={() => downloadReceiptPDF(selectedOrder)}
+                  size="sm"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs gap-1.5 h-8 flex items-center"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  Descargar Boleta PDF
+                </Button>
+              )}
             </DialogTitle>
             <DialogDescription>
               Realizado el {selectedOrder ? new Date(selectedOrder.fecha).toLocaleDateString('es-CL', {
@@ -423,7 +557,12 @@ export default function AdminOrdersPage() {
                     <TableBody>
                       {selectedOrder.articulos?.map((art: any, index: number) => (
                         <TableRow key={index}>
-                          <TableCell className="font-medium">{art.nombre}</TableCell>
+                          <TableCell className="font-medium">
+                            <span className="block font-semibold">{art.nombre}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground bg-muted border px-1.5 py-0.5 rounded w-max mt-1 block font-bold">
+                              SKU: {art.sku}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-center text-xs text-muted-foreground">
                             Color: {art.color} <br /> Talla: {art.talla}
                           </TableCell>
@@ -481,7 +620,7 @@ export default function AdminOrdersPage() {
                       <SelectValue placeholder="Cambiar estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="pendiente">Carrito Abandonado</SelectItem>
                       <SelectItem value="pagado">Pagado</SelectItem>
                       <SelectItem value="preparando">Preparando</SelectItem>
                       <SelectItem value="enviado">Enviado</SelectItem>

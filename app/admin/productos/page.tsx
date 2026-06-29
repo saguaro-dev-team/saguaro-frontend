@@ -67,6 +67,7 @@ export default function AdminProductsPage() {
   const [allColors, setAllColors] = useState<any[]>([])
   const [variantsStock, setVariantsStock] = useState<any[]>([])
   const [loadingVariants, setLoadingVariants] = useState(false)
+  const [variantSearchQuery, setVariantSearchQuery] = useState('')
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
@@ -167,7 +168,12 @@ export default function AdminProductsPage() {
   }, [])
 
   const filteredProducts = dbProducts.filter((product) => {
-    const matchesSearch = product.nombre.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesName = product.nombre.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesId = String(product.id).toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSku = Object.values(product.tallasPorColor || {}).some(
+      (sizes) => sizes.some((size) => size.sku?.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    const matchesSearch = matchesName || matchesId || matchesSku
     const matchesCategory = categoryFilter === 'all' || product.categoria === categoryFilter
     return matchesSearch && matchesCategory
   })
@@ -203,6 +209,7 @@ export default function AdminProductsPage() {
     setSelectedProductId(product.id)
     setVariantsStock([])
     setLoadingVariants(true)
+    setVariantSearchQuery('')
     
     // Mapear categoría de string a ID (esto depende de cómo estén en tu DB, usualmente Hombre=1, Mujer=2, Niños=3)
     let catId = '1'
@@ -445,9 +452,15 @@ export default function AdminProductsPage() {
                             <Edit className="h-4 w-4 mr-2" /> Editar Detalles
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={async () => {
+                            const adminUser = user ? {
+                              id: user.id,
+                              nombre: `${user.nombre} ${user.apellido}`.trim(),
+                              email: user.email
+                            } : undefined
+
                             const action = product.activo ? 'desactivar' : 'activar'
-                            if(confirm(`¿Estás seguro de ${action} este producto?`)) {
-                              const res = await toggleProductStatus(product.id, !product.activo)
+                            if (confirm(`¿Estás seguro de ${action} este producto? (El stock de sus variantes se mantendrá intacto)`)) {
+                              const res = await toggleProductStatus(product.id, !product.activo, adminUser)
                               if (res.success) loadProducts()
                             }
                           }} className={product.activo ? "text-destructive" : "text-green-600"}>
@@ -1032,16 +1045,37 @@ export default function AdminProductsPage() {
                     No se encontraron variantes activas en la base de datos para este producto.
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {Object.entries(
-                      variantsStock.reduce((acc: any, v: any) => {
-                        const colorName = v.color?.nombre_color || 'Estándar'
-                        if (!acc[colorName]) acc[colorName] = []
-                        acc[colorName].push(v)
-                        return acc
-                      }, {})
-                    ).map(([colorName, variants]: [string, any]) => (
-                      <div key={colorName} className="rounded-2xl border bg-background overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="space-y-6">
+                    {/* Barra de búsqueda por SKU, Talla o Color */}
+                    <div className="relative w-full sm:w-80">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por SKU, Talla o Color..."
+                        value={variantSearchQuery}
+                        onChange={(e) => setVariantSearchQuery(e.target.value)}
+                        className="pl-9 h-10 text-sm border-zinc-200 shadow-sm bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-8">
+                      {Object.entries(
+                        variantsStock
+                          .filter((v: any) => {
+                            if (!variantSearchQuery.trim()) return true
+                            const query = variantSearchQuery.toLowerCase()
+                            const skuMatch = v.codigo_sku?.toLowerCase().includes(query)
+                            const tallaMatch = `talla ${v.talla?.nombre_talla}`.toLowerCase().includes(query) || String(v.talla?.nombre_talla).includes(query)
+                            const colorMatch = v.color?.nombre_color?.toLowerCase().includes(query)
+                            return skuMatch || tallaMatch || colorMatch
+                          })
+                          .reduce((acc: any, v: any) => {
+                            const colorName = v.color?.nombre_color || 'Estándar'
+                            if (!acc[colorName]) acc[colorName] = []
+                            acc[colorName].push(v)
+                            return acc
+                          }, {})
+                      ).map(([colorName, variants]: [string, any]) => (
+                        <div key={colorName} className="rounded-2xl border bg-background overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
                         {/* Cabecera del Color */}
                         <div className="flex items-center justify-between bg-muted/30 px-5 py-4 border-b">
                           <div className="flex items-center gap-3">
@@ -1135,9 +1169,14 @@ export default function AdminProductsPage() {
                                   >
                                     {/* Info superior */}
                                     <div className="flex items-center justify-between mb-4 w-full">
-                                      <span className="font-extrabold text-base lg:text-lg tracking-tight text-foreground">
-                                        Talla {v.talla?.nombre_talla}
-                                      </span>
+                                      <div className="flex flex-col">
+                                        <span className="font-extrabold text-base lg:text-lg tracking-tight text-foreground">
+                                          Talla {v.talla?.nombre_talla}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-muted-foreground bg-muted border px-1.5 py-0.5 rounded w-max mt-1 font-bold">
+                                          SKU: {v.codigo_sku}
+                                        </span>
+                                      </div>
                                       {isModified && (
                                         <span className={`text-[10px] lg:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border shadow-sm ${
                                           difference > 0 
@@ -1206,7 +1245,8 @@ export default function AdminProductsPage() {
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
               </div>
             )}
 

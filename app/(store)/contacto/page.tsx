@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LucideIcon } from 'lucide-react'
 import { submitContactMessage } from '@/app/actions/contact'
+import { useAuth } from '@/lib/auth-context'
 
 // Re-importing missing icons if needed or just using lucide-react
 import { 
@@ -33,6 +34,7 @@ function ContactForm() {
   const searchParams = useSearchParams()
   const initialReason = searchParams.get('reason') || ''
   
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [reason, setReason] = useState(initialReason)
@@ -42,6 +44,9 @@ function ContactForm() {
     setLoading(true)
     const formData = new FormData(e.currentTarget)
     formData.append('motivo', reason) // Añadir el valor del select
+    if (user && user.id) {
+      formData.append('usuarioId', user.id)
+    }
     
     const result = await submitContactMessage(formData)
     

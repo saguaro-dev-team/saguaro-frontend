@@ -263,11 +263,23 @@ export default function ProductPage({ params }: PageProps) {
                 ))}
               </div>
               {selectedTalla && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Stock disponible:{' '}
-                  {currentTallas.find((s) => s.talla === selectedTalla)?.stock} unidades
-                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Stock disponible:{' '}
+                    <span className="text-foreground font-medium">{currentTallas.find((s) => s.talla === selectedTalla)?.stock} unidades</span>
+                  </p>
+                  {currentTallas.find((s) => s.talla === selectedTalla)?.sku && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      Código de producto:{' '}
+                      <span className="font-mono font-bold text-xs bg-muted border px-2 py-0.5 rounded text-foreground">
+                        {currentTallas.find((s) => s.talla === selectedTalla)?.sku}
+                      </span>
+                    </p>
+                  )}
+                </div>
               )}
+
+
             </div>
 
             <Separator className="my-6" />

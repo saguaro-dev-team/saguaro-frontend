@@ -1,6 +1,7 @@
 import { getDiscountedProducts } from '@/app/actions/products'
 import { ProductCard } from '@/components/store/product-card'
 import { Tag, Percent, Clock } from 'lucide-react'
+import { OffersNewsletter } from '@/components/store/offers-newsletter'
 
 export const metadata = {
   title: 'Ofertas y Promociones | Saguaro Barefoot',
@@ -91,28 +92,7 @@ export default async function OfertasPage() {
       </section>
       
       {/* Banner de Urgencia */}
-      <section className="py-12 border-t border-zinc-200 dark:border-zinc-800">
-        <div className="container mx-auto px-4">
-            <div className="bg-red-600 rounded-3xl p-8 md:p-12 overflow-hidden relative">
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="text-center md:text-left">
-                        <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                            ¿No quieres perderte ninguna oferta?
-                        </h3>
-                        <p className="text-red-100 opacity-90 text-lg">
-                            Regístrate y recibe notificaciones exclusivas antes que nadie.
-                        </p>
-                    </div>
-                    <button className="bg-white text-red-600 px-8 py-4 rounded-xl font-bold hover:bg-zinc-100 transition-colors shadow-lg shadow-red-900/20">
-                        Suscribirme ahora
-                    </button>
-                </div>
-                {/* Decoración abstracta */}
-                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-red-500 rounded-full blur-3xl opacity-50" />
-                <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-96 h-96 bg-red-400 rounded-full blur-3xl opacity-30" />
-            </div>
-        </div>
-      </section>
+      <OffersNewsletter />
     </div>
   )
 }
