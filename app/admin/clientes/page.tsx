@@ -347,7 +347,7 @@ export default function AdminClientesPage() {
                                 <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border">
                                     <Calendar className="w-4 h-4 text-primary" />
                                 </div>
-                                <span className="font-medium">{new Date(selectedUser.fecha_nacimiento).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                <span className="font-medium">{new Date(selectedUser.fecha_nacimiento).toLocaleDateString('es-CL', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                             </div>
                         </div>
                     </div>

@@ -70,6 +70,7 @@ export async function getUserOrders(userId: string) {
         estado_logistico: o.estado
       } : null,
       detalle_pedidos: o.articulos.map(a => ({
+        id_producto: a.id_producto,
         cantidad: a.cantidad,
         precio_unitario: a.precio,
         color: a.producto.color.nombre_color,

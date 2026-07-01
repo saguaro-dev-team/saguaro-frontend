@@ -130,7 +130,7 @@ export default function PruebasQAPage() {
     doc.setFontSize(10)
     doc.setTextColor(200)
     doc.setFont('helvetica', 'normal')
-    doc.text(`Proyecto: Saguaro Barefoot Chile | Auditor: Alberto Quiroz`, 14, 34)
+    doc.text(`Proyecto: Saguaro Barefoot Chile`, 14, 34)
     doc.text(`Fecha de Ejecución: ${timestamp}`, 14, 40)
 
     let currentY = 60
@@ -168,8 +168,7 @@ export default function PruebasQAPage() {
 
     currentY = (doc as any).lastAutoTable.finalY + 20
     doc.line(14, currentY, 80, currentY)
-    doc.text('Firma: Alberto Quiroz', 14, currentY + 5)
-    doc.text('Encargado de Seguridad y QA', 14, currentY + 9)
+    doc.text('Firma: Encargado de QA', 14, currentY + 5)
 
     doc.save(`QA-Reporte-${activeTab}-${Date.now()}.pdf`)
   }
@@ -187,16 +186,12 @@ export default function PruebasQAPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-6 border-border">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Beaker className="h-8 w-8 text-primary" /> Módulo de Pruebas y QA
             </h1>
-            <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5 gap-1 text-[11px] font-semibold py-0.5 px-2">
-              Alberto Quiroz
-            </Badge>
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
             Control center para evaluar y auditar la seguridad, concurrencia, APIs, integración y accesibilidad de Saguaro Chile.
@@ -467,19 +462,6 @@ export default function PruebasQAPage() {
       </div>
 
       {/* Footer */}
-      {isTabTested() && (
-        <Card className="p-4 bg-zinc-950 text-zinc-300 dark:bg-zinc-900 border border-zinc-800 rounded-xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 font-mono">
-              <Terminal className="h-4 w-4 text-emerald-500" />
-              <span>[PRUEBAS DE CONTROL DE CALIDAD ACTIVA] Todo en orden. Pruebas saludables.</span>
-            </div>
-            <div className="text-zinc-500 font-medium font-mono">
-              Auditor del Proyecto: Alberto Quiroz
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   )
 }

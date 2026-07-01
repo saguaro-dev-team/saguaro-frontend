@@ -45,7 +45,7 @@ function ContactForm() {
     const formData = new FormData(e.currentTarget)
     formData.append('motivo', reason) // Añadir el valor del select
     if (user && user.id) {
-      formData.append('usuarioId', user.id)
+      formData.append('usuarioId', String(user.id))
     }
     
     const result = await submitContactMessage(formData)

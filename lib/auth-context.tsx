@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { User, UserRole } from './store-types'
-import { registerUser, loginUser } from '@/app/actions/auth'
+import { registerUser, loginUser, checkUserStatus } from '@/app/actions/auth'
 
 interface AuthContextType {
   user: User | null
@@ -60,6 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isClient, setIsClient] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const logout = useCallback(() => {
+    setUser(null)
+    if (typeof window !== 'undefined') localStorage.removeItem('saguaro_user')
+  }, [])
+
   useEffect(() => {
     setIsClient(true)
     const saved = localStorage.getItem('saguaro_user')
@@ -96,7 +101,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [])
+  }, [logout])
+
+  // Verify that the user is still active in the database (real-time check)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const verifyStatus = () => {
+      checkUserStatus(user.id).then(res => {
+        if (res.success && !res.active) {
+          logout()
+        }
+      })
+    }
+
+    // Check immediately on mount/load
+    verifyStatus()
+
+    // Check every 10 seconds to detect deactivations/anonymizations in real time
+    const interval = setInterval(verifyStatus, 10000)
+    return () => clearInterval(interval)
+  }, [user?.id, logout])
 
   const isAuthenticated = user !== null
   const isAdmin = user?.role?.toLowerCase() === 'administrador' || user?.role?.toLowerCase() === 'admin'
@@ -148,11 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error(error)
       return { success: false, error: 'Error de conexión' }
     }
-  }, [])
-
-  const logout = useCallback(() => {
-    setUser(null)
-    if (typeof window !== 'undefined') localStorage.removeItem('saguaro_user')
   }, [])
 
   const updateUser = useCallback((data: Partial<User>) => {

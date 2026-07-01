@@ -111,7 +111,7 @@ export default function StandaloneReportPage() {
     doc.text('METADATOS DEL PROYECTO', 14, 145)
     doc.setFont('helvetica', 'normal')
     doc.text(`* Fecha y Hora de Auditoría: ${auditDate}`, 14, 153)
-    doc.text(`* Auditor Lider Técnico: Alberto Quiroz (QA & Core Dev)`, 14, 159)
+    doc.text(`* Auditor Lider Técnico: Saguaro QA Team`, 14, 159)
     doc.text(`* Tecnologías Auditadas: Next.js App Router, Prisma ORM, PostgreSQL, Webpay SDK`, 14, 165)
     doc.text(`* Entorno de Pruebas: Localhost / Sandbox de Integración`, 14, 171)
 
@@ -367,7 +367,7 @@ export default function StandaloneReportPage() {
     doc.setFontSize(9)
     doc.setTextColor(15, 23, 42)
     doc.setFont('helvetica', 'bold')
-    doc.text('Alberto Quiroz', 14, currentY)
+    doc.text('Encargado de QA', 14, currentY)
     doc.text('Representante del Comité Evaluador', 120, currentY)
     currentY += 4
     doc.setFontSize(8)
@@ -909,21 +909,6 @@ export default function StandaloneReportPage() {
         </div>
 
         {/* Declaración de Conformidad Footer */}
-        {runCompleted && (
-          <div className="p-8 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-xl">
-            <div className="space-y-1.5 text-center md:text-left">
-              <div className="text-white font-bold text-base flex items-center justify-center md:justify-start gap-2">
-                <ShieldCheck className="h-5 w-5 text-emerald-400" /> Certificado de Aseguramiento de Calidad y Conformidad
-              </div>
-              <div className="text-slate-400 text-xs leading-relaxed max-w-2xl">
-                La plataforma de Saguaro Chile ha sido auditada exhaustivamente. El producto de software cumple de manera satisfactoria con el 100% de los criterios de aceptación, umbrales de latencia y requerimientos funcionales de QA y seguridad.
-              </div>
-            </div>
-            <div className="text-slate-500 text-xs font-mono shrink-0">
-              Auditor del Proyecto: Alberto Quiroz
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

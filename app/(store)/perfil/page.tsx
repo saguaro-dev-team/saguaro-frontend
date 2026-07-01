@@ -18,6 +18,15 @@ import { getRegiones } from '@/app/actions/location'
 import { getUserOrders } from '@/app/actions/orders'
 import { cleanChileanPhone } from '@/lib/utils'
 import { getUserContactMessages } from '@/app/actions/contact'
+import { createReturnRequest } from '@/app/actions/returns'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // We will use real orders now
 
@@ -69,6 +78,87 @@ function ProfileContent() {
   // Mensajes State
   const [userMessages, setUserMessages] = useState<any[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
+
+  // Devoluciones State
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
+  const [selectedOrderForReturn, setSelectedOrderForReturn] = useState<any | null>(null)
+  const [selectedProductForReturn, setSelectedProductForReturn] = useState('')
+  const [returnReason, setReturnReason] = useState('')
+  const [returnComments, setReturnComments] = useState('')
+  const [bankBanco, setBankBanco] = useState('')
+  const [bankTipoCuenta, setBankTipoCuenta] = useState('')
+  const [bankRut, setBankRut] = useState('')
+  const [bankNombre, setBankNombre] = useState('')
+  const [bankNumeroCuenta, setBankNumeroCuenta] = useState('')
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
+  const [returnError, setReturnError] = useState('')
+
+  const handleSubmitReturn = async () => {
+    setReturnError('')
+    if (!selectedProductForReturn) {
+      setReturnError('Por favor selecciona el producto que deseas devolver.')
+      return
+    }
+    if (!returnReason) {
+      setReturnError('Por favor selecciona el motivo de la devolución.')
+      return
+    }
+    if (!returnComments.trim()) {
+      setReturnError('Por favor ingresa comentarios descriptivos.')
+      return
+    }
+
+    setIsSubmittingReturn(true)
+
+    const matchingDetail = selectedOrderForReturn.detalle_pedidos.find(
+      (det: any, idx: number) => String(det.sku || idx) === selectedProductForReturn
+    )
+
+    if (!matchingDetail) {
+      setReturnError('Producto no válido.')
+      setIsSubmittingReturn(false)
+      return
+    }
+
+    let bancoInfo = ''
+    if (bankNombre || bankRut || bankBanco || bankNumeroCuenta) {
+      bancoInfo = `Nombre: ${bankNombre}, RUT: ${bankRut}, Banco: ${bankBanco}, Tipo: ${bankTipoCuenta}, Num: ${bankNumeroCuenta}`
+    }
+
+    const res = await createReturnRequest({
+      id_pedido: selectedOrderForReturn.id_pedido,
+      id_producto: matchingDetail.id_producto,
+      motivo: returnReason,
+      comentarios: returnComments,
+      bancoInfo: bancoInfo || undefined
+    })
+
+    setIsSubmittingReturn(false)
+
+    if (res.success) {
+      alert('Tu solicitud de devolución ha sido enviada con éxito. Un ejecutivo la revisará.')
+      setIsReturnModalOpen(false)
+      // Refrescar órdenes de usuario
+      if (user) {
+        getUserOrders(user.id).then(r => {
+          if (r.success && r.orders) {
+            setRealOrders(r.orders)
+          }
+        })
+      }
+      // Resetear campos
+      setReturnReason('')
+      setReturnComments('')
+      setSelectedProductForReturn('')
+      setBankBanco('')
+      setBankTipoCuenta('')
+      setBankRut('')
+      setBankNombre('')
+      setBankNumeroCuenta('')
+    } else {
+      setReturnError(res.error || 'Ocurrió un error al procesar tu solicitud.')
+    }
+  }
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -223,6 +313,14 @@ function ProfileContent() {
         return 'bg-emerald-100 text-emerald-800'
       case 'cancelado':
         return 'bg-red-100 text-red-800'
+      case 'devolucion_solicitada':
+        return 'bg-amber-100 text-amber-800'
+      case 'devolucion_aprobada':
+        return 'bg-indigo-100 text-indigo-800'
+      case 'devolucion_rechazada':
+        return 'bg-rose-100 text-rose-800'
+      case 'reembolsado':
+        return 'bg-teal-100 text-teal-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -460,7 +558,14 @@ function ProfileContent() {
                             </p>
                           </div>
                           <Badge className={getStatusColor(order.estado?.nombre || 'Pendiente')}>
-                            {order.estado?.nombre || 'Pendiente'}
+                            {(() => {
+                              const nombre = order.estado?.nombre || 'Pendiente'
+                              if (nombre === 'devolucion_solicitada') return 'Devolución Solicitada'
+                              if (nombre === 'devolucion_aprobada') return 'Devolución Aprobada'
+                              if (nombre === 'devolucion_rechazada') return 'Devolución Rechazada'
+                              if (nombre === 'reembolsado') return 'Reembolsado'
+                              return nombre
+                            })()}
                           </Badge>
                         </div>
                         
@@ -505,7 +610,7 @@ function ProfileContent() {
                         <div className="flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground mt-2">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-3 w-3" />
-                            <span>Pago: {order.pagos?.[0]?.metodo_pago || 'Pendiente'}</span>
+                            <span>Pago: {order.pagos?.[0]?.metodo_pago || 'Pendiente'} ({order.pagos?.[0]?.estado_pago || 'Pendiente de Pago'})</span>
                           </div>
                           {order.seguimiento_envio && (
                             <div className="flex items-center gap-2 text-primary font-medium">
@@ -544,6 +649,22 @@ function ProfileContent() {
                           <span className="font-bold">Total</span>
                           <span className="font-bold text-xl">{formatPrice(order.total_pagado)}</span>
                         </div>
+
+                        {order.estado?.nombre === 'entregado' && (
+                          <div className="flex justify-end pt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs border-amber-600 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                              onClick={() => {
+                                setSelectedOrderForReturn(order)
+                                setIsReturnModalOpen(true)
+                              }}
+                            >
+                              Solicitar Devolución
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -748,6 +869,136 @@ function ProfileContent() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de Solicitud de Devolución */}
+      <Dialog open={isReturnModalOpen} onOpenChange={(open) => {
+        setIsReturnModalOpen(open)
+        if (!open) {
+          setReturnReason('')
+          setReturnComments('')
+          setSelectedProductForReturn('')
+          setBankBanco('')
+          setBankTipoCuenta('')
+          setBankRut('')
+          setBankNombre('')
+          setBankNumeroCuenta('')
+          setReturnError('')
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Solicitar Devolución</DialogTitle>
+            <DialogDescription>
+              Completa el formulario para iniciar tu proceso de devolución.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrderForReturn && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>1. Selecciona el calzado a devolver</Label>
+                <Select value={selectedProductForReturn} onValueChange={setSelectedProductForReturn}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elige un producto de tu pedido" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedOrderForReturn.detalle_pedidos.map((det: any, idx: number) => (
+                      <SelectItem 
+                        key={idx} 
+                        value={String(det.sku || idx)}
+                      >
+                        {det.productos?.nombre} ({det.color}, Talla {det.talla})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>2. Motivo de la Devolución</Label>
+                <Select value={returnReason} onValueChange={setReturnReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="falla_fabrica">Falla de Fábrica / Calidad</SelectItem>
+                    <SelectItem value="talla_incorrecta">Talla Incorrecta</SelectItem>
+                    <SelectItem value="no_me_gusto">No me gustó / Arrepentimiento</SelectItem>
+                    <SelectItem value="otro">Otro Motivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>3. Comentarios del Cliente</Label>
+                <Textarea 
+                  placeholder="Explícanos de manera sencilla el problema con el producto..."
+                  value={returnComments}
+                  onChange={(e) => setReturnComments(e.target.value)}
+                  maxLength={150}
+                  className="min-h-[85px] resize-none"
+                />
+              </div>
+
+              <div className="border-t pt-3 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  4. Datos Bancarios para Reembolso (Opcional / Pago Débito)
+                </p>
+                
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="bankNombre" className="text-xs">Nombre Completo</Label>
+                    <Input id="bankNombre" value={bankNombre} onChange={(e) => setBankNombre(e.target.value)} placeholder="Juan Perez" maxLength={50} className="h-9 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bankRut" className="text-xs">RUT Titular</Label>
+                    <Input id="bankRut" value={bankRut} onChange={(e) => setBankRut(e.target.value)} placeholder="12.345.678-9" maxLength={15} className="h-9 text-xs" />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="bankBanco" className="text-xs">Banco</Label>
+                    <Input id="bankBanco" value={bankBanco} onChange={(e) => setBankBanco(e.target.value)} placeholder="Banco Estado" maxLength={30} className="h-9 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bankTipo" className="text-xs">Tipo de Cuenta</Label>
+                    <Input id="bankTipo" value={bankTipoCuenta} onChange={(e) => setBankTipoCuenta(e.target.value)} placeholder="Cuenta Corriente" maxLength={30} className="h-9 text-xs" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="bankNumero" className="text-xs">Número de Cuenta</Label>
+                  <Input id="bankNumero" value={bankNumeroCuenta} onChange={(e) => setBankNumeroCuenta(e.target.value)} placeholder="123456789" maxLength={30} className="h-9 text-xs" />
+                </div>
+              </div>
+
+              {returnError && (
+                <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">
+                  {returnError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsReturnModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  disabled={isSubmittingReturn}
+                  onClick={handleSubmitReturn}
+                >
+                  {isSubmittingReturn ? 'Enviando...' : 'Enviar Solicitud'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

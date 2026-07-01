@@ -194,3 +194,17 @@ export async function checkEmailOrRutExists(email?: string, rut?: string) {
   }
 }
 
+export async function checkUserStatus(userId: string) {
+  try {
+    const id = parseInt(userId)
+    if (isNaN(id)) return { success: false }
+    const user = await prisma.usuario.findUnique({
+      where: { id_usuario: id },
+      select: { estado: true }
+    })
+    return { success: true, active: user ? user.estado : false }
+  } catch (error) {
+    return { success: false }
+  }
+}
+
