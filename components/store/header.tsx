@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { ShoppingBag, User, Menu, X, Search, ChevronDown, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,6 +242,10 @@ export function Header() {
                   </Button>
                 </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Menú de Navegación Móvil</SheetTitle>
+                  <SheetDescription>Accede a las distintas categorías y secciones de la tienda Saguaro Barefoot Chile.</SheetDescription>
+                </SheetHeader>
                 <nav className="flex flex-col gap-4 mt-8">
                   {navigation.map((item) => (
                     <div key={item.name} className="py-2">
