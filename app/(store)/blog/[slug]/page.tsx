@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Calendar, User, ChevronLeft, Share2, Facebook, Twitter, Link as LinkIcon } from 'lucide-react'
+import { Calendar, User, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { getPostBySlug } from '@/app/actions/blog'
+import { ShareButtons } from '@/components/store/share-buttons'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -57,22 +58,21 @@ export default async function PostPage({ params }: PageProps) {
           {/* Main Body */}
           <div className="flex-1">
             <div className="prose prose-lg prose-primary max-w-none dark:prose-invert">
-              {post.contenido.split('\n').map((para: string, i: number) => (
-                para.trim() ? <p key={i} className="mb-6 text-muted-foreground leading-relaxed text-lg">{para}</p> : <br key={i} />
-              ))}
+              {post.contenido.includes('<p>') || post.contenido.includes('</p>') || post.contenido.includes('<br') ? (
+                <div 
+                  className="text-muted-foreground leading-relaxed text-lg"
+                  dangerouslySetInnerHTML={{ __html: post.contenido }}
+                />
+              ) : (
+                post.contenido.split('\n').map((para: string, i: number) => (
+                  para.trim() ? <p key={i} className="mb-6 text-muted-foreground leading-relaxed text-lg">{para}</p> : <br key={i} />
+                ))
+              )}
             </div>
 
             <Separator className="my-12" />
 
-            {/* Social Share */}
-            <div className="flex items-center justify-between py-6">
-              <h4 className="font-bold">Compartir artículo</h4>
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon" className="rounded-full"><Facebook className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="rounded-full"><Twitter className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="rounded-full"><LinkIcon className="h-4 w-4" /></Button>
-              </div>
-            </div>
+            <ShareButtons slug={post.slug} titulo={post.titulo} />
           </div>
 
           {/* Sidebar */}

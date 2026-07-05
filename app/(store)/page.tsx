@@ -10,8 +10,10 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default async function HomePage() {
-  const newProducts = await getNewProducts()
-  const discountedProducts = await getDiscountedProducts()
+  const [newProducts, discountedProducts] = await Promise.all([
+    getNewProducts(),
+    getDiscountedProducts()
+  ])
   return (
     <>
       <HeroSection />

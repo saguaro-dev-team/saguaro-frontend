@@ -502,7 +502,7 @@ export default function StandaloneReportPage() {
                   </h4>
                   <Badge variant="outline" className="text-emerald-400 border-emerald-500/20 bg-emerald-500/5 text-[10px]">REAL-TIME TEST</Badge>
                 </div>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 overflow-y-auto max-h-[350px] space-y-2 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 space-y-2 leading-relaxed h-auto">
                   <div className="text-slate-500 select-none">// Ejecutando auditoría de seguridad SQLi contra modelo 'usuario' de Prisma...</div>
                   {security ? security.sqlInjection.details.map((d, i) => (
                     <div key={i} className="flex items-start gap-2">
@@ -560,7 +560,7 @@ export default function StandaloneReportPage() {
                   </h4>
                   <Badge variant="outline" className="text-emerald-400 border-emerald-500/20 bg-emerald-500/5 text-[10px]">REAL-TIME TEST</Badge>
                 </div>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 overflow-y-auto max-h-[350px] space-y-2 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 space-y-2 leading-relaxed h-auto">
                   <div className="text-slate-500 select-none">// Evaluando inyecciones XSS en el backend (submitContactMessage)...</div>
                   {security ? security.xssInjection.details.map((d, i) => (
                     <div key={i} className="flex items-start gap-2">
@@ -616,7 +616,7 @@ export default function StandaloneReportPage() {
                   </h4>
                   <Badge variant="outline" className="text-emerald-400 border-emerald-500/20 bg-emerald-500/5 text-[10px]">REAL-TIME TEST</Badge>
                 </div>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 overflow-y-auto max-h-[350px] space-y-2 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-emerald-400 space-y-2 leading-relaxed h-auto">
                   <div className="text-slate-500 select-none">// Probando limpiador regex 'cleanChileanPhone' con diversos formatos corruptos...</div>
                   {security ? security.phoneSanitization.details.map((d, i) => (
                     <div key={i} className="flex items-start gap-2">
@@ -666,7 +666,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-indigo-400" /> Salida de Consola del Runner de Vitest:
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {unit ? unit.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Ejecutando suite unitaria...'}
@@ -714,7 +714,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-pink-400" /> Salida de Consola del Motor k6:
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {load ? load.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Ejecutando pruebas de carga masiva...'}
@@ -762,7 +762,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-amber-400" /> Bitácora de Aserciones del Flujo Transaccional:
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {integration ? integration.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') || log.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Ejecutando test de integración...'}
@@ -807,7 +807,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-purple-400" /> Salida de Consultas de Endpoints de Red:
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {api ? api.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') || log.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Ejecutando auditoría de endpoints...'}
@@ -852,7 +852,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-cyan-400" /> Registro de Browser Automation (Playwright):
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {e2e ? e2e.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') || log.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Abriendo Chromium headless...'}
@@ -897,7 +897,7 @@ export default function StandaloneReportPage() {
                 <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-teal-400" /> Auditoría de Accesibilidad WCAG 2.1 (Axe-Core):
                 </h4>
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[350px] space-y-1.5 leading-relaxed">
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed h-auto">
                   {a11y ? a11y.logs.map((log, idx) => (
                     <div key={idx} className={log.includes('✓') || log.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{log}</div>
                   )) : 'Evaluando elementos del DOM...'}

@@ -64,9 +64,7 @@ async function main() {
   let catNino = await prisma.categoria.findFirst({ where: { nombre_categoria: 'Niño' } });
   if (!catNino) catNino = await prisma.categoria.create({ data: { nombre_categoria: 'Niño' } });
 
-  console.log('Borrando productos antiguos para evitar duplicados...')
-  await prisma.producto.deleteMany({})
-  await prisma.modelo.deleteMany({})
+  console.log('Omitiendo borrado de productos antiguos para evitar violaciones de clave foránea...')
 
   console.log('Sembrando base de datos desde la jerarquía de carpetas...')
   const publicZapatillasDir = path.join(process.cwd(), 'public', 'zapatillas')
@@ -118,17 +116,25 @@ async function main() {
 
         const precio = Math.floor(Math.random() * (6 - 3) + 3) * 10000 + 990;
 
-        // Create Model
-        const modeloDb = await prisma.modelo.create({
-          data: {
-            id_categoria: catId,
+        // Check if Model exists
+        let modeloDb = await prisma.modelo.findFirst({
+          where: {
             nombre_modelo: cleanModelName,
-            descripcion: "Zapatillas Saguaro Barefoot originales. Diseño anatómico que respeta la forma natural del pie, ofreciendo flexibilidad y comodidad inigualable para tu día a día.",
-            marca: "Saguaro",
-            imagen_url: firstImageUrl || '/placeholder.jpg',
-            tipo: cleanType
+            id_categoria: catId
           }
         });
+        if (!modeloDb) {
+          modeloDb = await prisma.modelo.create({
+            data: {
+              id_categoria: catId,
+              nombre_modelo: cleanModelName,
+              descripcion: "Zapatillas Saguaro Barefoot originales. Diseño anatómico que respeta la forma natural del pie, ofreciendo flexibilidad y comodidad inigualable para tu día a día.",
+              marca: "Saguaro",
+              imagen_url: firstImageUrl || '/placeholder.jpg',
+              tipo: cleanType
+            }
+          });
+        }
 
         // Parse colors and create variants
         for (const color of colorDirs) {
@@ -152,20 +158,29 @@ async function main() {
                 const stock = Math.floor(Math.random() * 20) + 5;
                 const sku = `SAG-${modeloDb.id_modelo}-${colorDb.id_color}-${talla.id_talla}-${variantCount}`;
                 
-                await prisma.producto.create({
-                    data: {
+                let productoDb = await prisma.producto.findFirst({
+                    where: {
                         id_modelo: modeloDb.id_modelo,
                         id_color: colorDb.id_color,
-                        id_talla: talla.id_talla,
-                        codigo_sku: sku,
-                        precio: precio,
-                        stock: stock,
+                        id_talla: talla.id_talla
                     }
                 });
+                if (!productoDb) {
+                    await prisma.producto.create({
+                        data: {
+                            id_modelo: modeloDb.id_modelo,
+                            id_color: colorDb.id_color,
+                            id_talla: talla.id_talla,
+                            codigo_sku: sku,
+                            precio: precio,
+                            stock: stock,
+                        }
+                    });
+                }
                 variantCount++;
             }
         }
-        console.log(`Creado Modelo: ${cleanModelName} (${type}) con sus colores y tallas.`);
+        console.log(`Modelo procesado: ${cleanModelName} (${type}) con sus colores y tallas.`);
       }
     }
   }
