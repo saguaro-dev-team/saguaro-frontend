@@ -18,7 +18,8 @@ import {
   MessageSquare,
   ShieldAlert,
   Beaker,
-  RotateCcw
+  RotateCcw,
+  Star
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Productos', href: '/admin/productos', icon: Package },
   { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
   { name: 'Devoluciones', href: '/admin/devoluciones', icon: RotateCcw },
+  { name: 'Valoraciones', href: '/admin/valoraciones', icon: Star },
   { name: 'Usuarios', href: '/admin/clientes', icon: Users },
   { name: 'Auditoría Stock', href: '/admin/auditoria', icon: ShieldAlert },
   { name: 'Pruebas', href: '/admin/pruebas', icon: Beaker },

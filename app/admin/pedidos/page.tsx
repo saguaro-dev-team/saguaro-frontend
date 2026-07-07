@@ -197,7 +197,7 @@ export default function AdminOrdersPage() {
     doc.setFontSize(10)
     doc.text('Comercial Saguaro Limitada', 14, 56)
     doc.text('R.U.T.: 76.543.210-K', 14, 61)
-    doc.text('Av. Vitacura 1234, Santiago, Chile', 14, 66)
+    doc.text('Av. Las Industrias 1234, Los Ángeles, Chile', 14, 66)
 
     // Buyer Info
     doc.setFont("helvetica", "bold")

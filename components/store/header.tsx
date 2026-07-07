@@ -68,6 +68,14 @@ export function Header() {
   const { itemCount, openCart } = useCart()
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
   const router = useRouter()
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
+
+  const toggleSubmenu = (name: string) => {
+    setOpenSubmenus(prev => ({
+      ...prev,
+      [name]: !prev[name]
+    }))
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -236,45 +244,130 @@ export function Header() {
               </Button>
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Menu</span>
+                  <Button variant="ghost" size="icon" className="relative hover:bg-muted/50 rounded-full">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Menú</span>
                   </Button>
                 </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Menú de Navegación Móvil</SheetTitle>
-                  <SheetDescription>Accede a las distintas categorías y secciones de la tienda Saguaro Barefoot Chile.</SheetDescription>
-                </SheetHeader>
-                <nav className="flex flex-col gap-4 mt-8">
-                  {navigation.map((item) => (
-                    <div key={item.name} className="py-2">
-                      <Link
-                        href={item.href}
-                        className="text-lg font-semibold hover:text-primary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {item.name}
-                      </Link>
-                      {item.submenu && (
-                        <div className="ml-4 mt-2 flex flex-col gap-2">
-                          {item.submenu.map((subitem) => (
-                            <Link
-                              key={subitem.name}
-                              href={subitem.href}
-                              className="text-muted-foreground hover:text-primary"
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              {subitem.name}
-                            </Link>
-                          ))}
+                <SheetContent side="right" className="w-[310px] sm:w-[380px] p-0 flex flex-col justify-between bg-white border-l shadow-2xl">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Menú de Navegación Móvil</SheetTitle>
+                    <SheetDescription>Accede a las distintas categorías y secciones de la tienda Saguaro Barefoot Chile.</SheetDescription>
+                  </SheetHeader>
+
+                  {/* Header visual con Logo */}
+                  <div className="p-5 border-b flex items-center justify-between bg-muted/20">
+                    <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2">
+                      <Image
+                        src="/images/saguarologo.png"
+                        alt="Saguaro Chile"
+                        width={130}
+                        height={40}
+                        className="h-10 w-auto object-contain"
+                      />
+                    </Link>
+                  </div>
+
+                  {/* Links de navegación con scrollable area */}
+                  <div className="flex-1 overflow-y-auto px-5 py-4">
+                    <nav className="flex flex-col gap-1">
+                      {navigation.map((item) => {
+                        const hasSubmenu = !!item.submenu;
+                        const isSubmenuOpen = !!openSubmenus[item.name];
+
+                        return (
+                          <div key={item.name} className="border-b border-border/40 last:border-0 py-2">
+                            {hasSubmenu ? (
+                              <div>
+                                <button
+                                  onClick={() => toggleSubmenu(item.name)}
+                                  className="w-full flex items-center justify-between py-2 text-base font-semibold text-foreground hover:text-primary transition-colors text-left"
+                                >
+                                  <span>{item.name}</span>
+                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${isSubmenuOpen ? 'rotate-180 text-primary' : ''}`} />
+                                </button>
+                                
+                                {/* Contenedor animado de submenús */}
+                                <div className={`grid transition-all duration-300 ease-in-out ${isSubmenuOpen ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
+                                  <div className="overflow-hidden">
+                                    <div className="pl-4 pb-2 flex flex-col gap-2 border-l-2 border-primary/20">
+                                      <Link
+                                        href={item.href}
+                                        className="text-sm font-medium text-foreground/80 hover:text-primary py-1"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                      >
+                                        Ver todo {item.name}
+                                      </Link>
+                                      {item.submenu!.map((subitem) => (
+                                        <Link
+                                          key={subitem.name}
+                                          href={subitem.href}
+                                          className="text-sm text-muted-foreground hover:text-primary py-1 transition-colors"
+                                          onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                          {subitem.name}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <Link
+                                href={item.href}
+                                className="flex items-center justify-between py-2 text-base font-semibold text-foreground hover:text-primary transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                <span>{item.name}</span>
+                                {item.name === 'Ofertas' && (
+                                  <span className="bg-destructive/10 text-destructive text-xs font-semibold px-2 py-0.5 rounded-full animate-pulse">
+                                    ¡Sale!
+                                  </span>
+                                )}
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </nav>
+                  </div>
+
+                  {/* Pie de página con login/perfil */}
+                  <div className="p-5 border-t bg-muted/30">
+                    {isAuthenticated ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {user?.nombre?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{user?.nombre} {user?.apellido}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user?.email}</p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </nav>
-              </SheetContent>
-            </Sheet>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <Button variant="outline" size="sm" asChild className="rounded-full">
+                            <Link href="/perfil" onClick={() => setMobileMenuOpen(false)}>Mi Perfil</Link>
+                          </Button>
+                          <Button variant="default" size="sm" onClick={() => { logout(); setMobileMenuOpen(false); router.push('/'); }} className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Cerrar Sesión
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2 py-5 font-semibold" asChild>
+                        <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                          <User className="h-4 w-4" />
+                          Iniciar Sesión
+                        </Link>
+                      </Button>
+                    )}
+                    <p className="text-center text-[10px] text-muted-foreground mt-4">
+                      Saguaro Chile © 2026 | Envío a todo el país
+                    </p>
+                  </div>
+                </SheetContent>
+              </Sheet>
           </div>
           </div>
         </div>

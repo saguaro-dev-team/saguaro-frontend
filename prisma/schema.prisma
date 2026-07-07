@@ -361,8 +361,6 @@ model valoracion {
   id_producto       Int
   puntuacion        Int
   comentario        String?  @db.Text
-  sentimiento       String?  @db.VarChar(50)
-  score_sentimiento Float
   fecha_creacion    DateTime @default(now()) @db.Timestamp(6)
   usuario           usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   producto          producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade)

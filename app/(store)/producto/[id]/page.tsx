@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ShoppingBag, Heart, Minus, Plus, ChevronRight, Truck, RefreshCw, Shield } from 'lucide-react'
+import { ShoppingBag, Heart, Minus, Plus, ChevronRight, Truck, RefreshCw, Shield, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -20,6 +20,7 @@ import { formatPrice } from '@/lib/store-data'
 import { getColorValue } from '@/lib/color-utils'
 import { useCart } from '@/lib/cart-context'
 import { ProductCard } from '@/components/store/product-card'
+import { getProductReviews, getProductAverage } from '@/app/actions/ratings'
 import type { Product } from '@/lib/store-types'
 
 interface PageProps {
@@ -46,12 +47,18 @@ export default function ProductPage({ params }: PageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
 
+  const [reviews, setReviews] = useState<any[]>([])
+  const [reviewsAverage, setReviewsAverage] = useState(0)
+  const [reviewsCount, setReviewsCount] = useState(0)
+
   useEffect(() => {
     setLoading(true)
     Promise.all([
       getProductById(id),
-      getConfiguracion()
-    ]).then(([data, config]) => {
+      getConfiguracion(),
+      getProductReviews(parseInt(id) || 0),
+      getProductAverage(parseInt(id) || 0)
+    ]).then(([data, config, reviewsData, avgData]) => {
       if (data) {
         setProduct(data)
         setSelectedColor(data.colores[0] || '')
@@ -61,6 +68,13 @@ export default function ProductPage({ params }: PageProps) {
       }
       if (config) {
         setStoreConfig(config)
+      }
+      if (reviewsData && reviewsData.success && reviewsData.reviews) {
+        setReviews(reviewsData.reviews)
+      }
+      if (avgData && avgData.success) {
+        setReviewsAverage(avgData.average)
+        setReviewsCount(avgData.count)
       }
       setLoading(false)
     })
@@ -185,6 +199,29 @@ export default function ProductPage({ params }: PageProps) {
                 {product.tipo} | {categoryNames[product.categoria]}
               </p>
               <h1 className="mt-2 text-3xl font-bold text-foreground">{product.nombre}</h1>
+
+              {/* Resumen de Valoraciones */}
+              <div className="mt-3 flex items-center gap-1.5">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star 
+                      key={star} 
+                      className={`h-4 w-4 ${
+                        star <= Math.round(reviewsAverage) 
+                          ? 'text-yellow-400 fill-yellow-400' 
+                          : 'text-muted-foreground/30 fill-transparent'
+                      }`}
+                    />
+                  ))}
+                </div>
+                {reviewsCount > 0 ? (
+                  <span className="text-sm font-medium text-foreground">
+                    {reviewsAverage.toFixed(1)} <span className="text-muted-foreground font-normal">({reviewsCount} {reviewsCount === 1 ? 'reseña' : 'reseñas'})</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sin calificaciones aún</span>
+                )}
+              </div>
 
               <div className="mt-4 flex items-center gap-3">
                 <span className="text-3xl font-bold text-foreground">
@@ -349,7 +386,7 @@ export default function ProductPage({ params }: PageProps) {
                 <AccordionTrigger>Envio y Entrega</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2 text-muted-foreground whitespace-pre-line">
-                    {storeConfig?.politica_envio || 'Envío gratis en compras sobre $50.000\nDespacho a todo Chile\nTiempo de entrega: 3-5 días hábiles (Santiago), 5-10 días hábiles (regiones)'}
+                    {storeConfig?.politica_envio || 'Envío gratis en compras sobre $50.000\nDespacho a todo Chile\nTiempo de entrega: 3-5 días hábiles (Los Ángeles y Biobío), 5-10 días hábiles (otras regiones)'}
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -364,6 +401,87 @@ export default function ProductPage({ params }: PageProps) {
             </Accordion>
           </div>
         </div>
+
+        {/* Reseñas de Clientes */}
+        <section className="mt-16 border-t pt-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Reseñas de Clientes</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Opiniones reales de usuarios que han comprado este producto
+              </p>
+            </div>
+            {reviewsCount > 0 && (
+              <div className="flex items-center gap-3 bg-muted/40 p-4 rounded-2xl border border-muted/50">
+                <span className="text-4xl font-extrabold text-foreground">{reviewsAverage.toFixed(1)}</span>
+                <div className="flex flex-col">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star} 
+                        className={`h-4 w-4 ${
+                          star <= Math.round(reviewsAverage) 
+                            ? 'text-yellow-400 fill-yellow-400' 
+                            : 'text-muted-foreground/30 fill-transparent'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-0.5">{reviewsCount} {reviewsCount === 1 ? 'opinión' : 'opiniones'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {reviews.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {reviews.map((rev, idx) => (
+                <div key={idx} className="bg-muted/10 p-5 rounded-2xl border hover:shadow-sm transition-all duration-300 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star} 
+                            className={`h-3.5 w-3.5 ${
+                              star <= rev.puntuacion 
+                                ? 'text-yellow-400 fill-yellow-400' 
+                                : 'text-muted-foreground/20 fill-transparent'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(rev.fecha_creacion).toLocaleDateString('es-CL')}
+                      </span>
+                    </div>
+                    {rev.comentario ? (
+                      <p className="text-sm text-foreground italic leading-relaxed">
+                        "{rev.comentario}"
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Calificó con {rev.puntuacion} estrellas sin dejar comentario.</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-muted/30">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                      {rev.usuario?.nombre?.[0] || 'U'}
+                    </div>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {rev.usuario?.nombre || 'Usuario'} {rev.usuario?.apellido?.[0] ? `${rev.usuario.apellido[0]}.` : ''}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed border-muted">
+              <Star className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3 fill-transparent" />
+              <p className="text-muted-foreground text-sm font-medium">Este producto aún no cuenta con reseñas.</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">¡Sé el primero en calificarlo tras realizar tu compra!</p>
+            </div>
+          )}
+        </section>
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (

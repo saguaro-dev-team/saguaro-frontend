@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck, MessageSquare, Mail } from 'lucide-react'
+import { User, Package, MapPin, CreditCard, Settings, LogOut, ChevronRight, Truck, MessageSquare, Mail, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ import { getUserOrders } from '@/app/actions/orders'
 import { cleanChileanPhone } from '@/lib/utils'
 import { getUserContactMessages } from '@/app/actions/contact'
 import { createReturnRequest } from '@/app/actions/returns'
+import { createProductRating } from '@/app/actions/ratings'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -66,6 +67,7 @@ function ProfileContent() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [realOrders, setRealOrders] = useState<any[]>([])
+  const [showAllOrders, setShowAllOrders] = useState(false)
 
   // Direcciones State
   const [direcciones, setDirecciones] = useState<any[]>([])
@@ -92,6 +94,72 @@ function ProfileContent() {
   const [bankNumeroCuenta, setBankNumeroCuenta] = useState('')
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
   const [returnError, setReturnError] = useState('')
+
+  // Valoraciones State
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false)
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState<any | null>(null)
+  const [ratingsData, setRatingsData] = useState<Record<number, { puntuacion: number, comentario: string }>>({})
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false)
+  const [ratingError, setRatingError] = useState('')
+  const [ratingSuccess, setRatingSuccess] = useState('')
+
+  const handleSubmitRatings = async () => {
+    setRatingError('')
+    setRatingSuccess('')
+    if (!selectedOrderForRating || !user) return
+
+    // Validar que cada producto tenga al menos una puntuación elegida
+    const productsToRate = selectedOrderForRating.detalle_pedidos
+    for (const det of productsToRate) {
+      const prodId = det.id_producto
+      const ratingInfo = ratingsData[prodId]
+      if (!ratingInfo || ratingInfo.puntuacion < 1 || ratingInfo.puntuacion > 5) {
+        setRatingError(`Por favor selecciona una puntuación de 1 a 5 estrellas para el producto: ${det.productos?.nombre || 'Producto'}`)
+        return
+      }
+    }
+
+    setIsSubmittingRating(true)
+    let hasError = false
+    let lastErrorMsg = ''
+
+    // Crear las valoraciones
+    for (const det of productsToRate) {
+      const prodId = det.id_producto
+      const ratingInfo = ratingsData[prodId]
+      
+      const res = await createProductRating({
+        id_usuario: user.id,
+        id_producto: prodId,
+        puntuacion: ratingInfo.puntuacion,
+        comentario: ratingInfo.comentario
+      })
+
+      if (!res.success) {
+        hasError = true
+        lastErrorMsg = res.error || 'Error al guardar la calificación'
+      }
+    }
+
+    setIsSubmittingRating(false)
+    if (hasError) {
+      setRatingError(lastErrorMsg)
+    } else {
+      setRatingSuccess('¡Muchas gracias por valorar tus productos! Tus calificaciones se han registrado exitosamente.')
+      setTimeout(() => {
+        setIsRatingModalOpen(false)
+        setRatingsData({})
+        setRatingSuccess('')
+        if (user?.id) {
+          getUserOrders(user.id).then(res => {
+            if (res.success && res.orders) {
+              setRealOrders(res.orders)
+            }
+          })
+        }
+      }, 3000)
+    }
+  }
 
   const handleSubmitReturn = async () => {
     setReturnError('')
@@ -543,140 +611,191 @@ function ProfileContent() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {realOrders.length > 0 ? (
-                  <div className="space-y-4">
-                    {realOrders.map((order) => (
-                      <div
-                        key={order.id_pedido}
-                        className="flex flex-col gap-4 rounded-lg border p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="font-bold text-lg font-mono">SAG-{String(order.id_pedido).padStart(8, '0')}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(order.fecha_pedido).toLocaleDateString('es-CL')}
-                            </p>
-                          </div>
-                          <Badge className={getStatusColor(order.estado?.nombre || 'Pendiente')}>
-                            {(() => {
-                              const nombre = order.estado?.nombre || 'Pendiente'
-                              if (nombre === 'devolucion_solicitada') return 'Devolución Solicitada'
-                              if (nombre === 'devolucion_aprobada') return 'Devolución Aprobada'
-                              if (nombre === 'devolucion_rechazada') return 'Devolución Rechazada'
-                              if (nombre === 'reembolsado') return 'Reembolsado'
-                              return nombre
-                            })()}
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-4 my-2">
-                          {order.detalle_pedidos.map((det: any, idx: number) => (
-                            <div 
-                              key={`${det.productos?.nombre}-${det.color}-${det.talla}-${idx}`} 
-                              className="flex items-center gap-4 bg-muted/20 p-3 rounded-xl border border-muted/30"
-                            >
-                              <div className="h-16 w-16 bg-muted rounded-lg overflow-hidden shrink-0 flex items-center justify-center border relative">
-                                {det.productos?.imagen_url && det.productos?.imagen_url !== '/placeholder.jpg' ? (
-                                  <img 
-                                    src={det.productos.imagen_url} 
-                                    alt={det.productos.nombre} 
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <Package className="h-6 w-6 text-muted-foreground/30" />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold truncate">{det.productos?.nombre}</p>
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
-                                  <span>Talla: {det.talla}</span>
-                                  <span>Color: {det.color}</span>
-                                  <span>Cant: {det.cantidad}</span>
-                                </div>
-                                {det.sku && (
-                                  <p className="text-[10px] font-mono text-muted-foreground mt-1 uppercase">
-                                    SKU: {det.sku}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="text-sm font-bold">{formatPrice(det.precio_unitario * det.cantidad)}</p>
-                                <p className="text-[10px] text-muted-foreground">{det.cantidad}x {formatPrice(det.precio_unitario)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                {(() => {
+                  const displayedOrders = showAllOrders 
+                    ? realOrders 
+                    : realOrders.filter(order => {
+                        const est = order.estado?.nombre?.toLowerCase() || '';
+                        return est !== 'cancelado' && est !== 'pendiente';
+                      });
 
-                        <div className="flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground mt-2">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-3 w-3" />
-                            <span>Pago: {order.pagos?.[0]?.metodo_pago || 'Pendiente'} ({order.pagos?.[0]?.estado_pago || 'Pendiente de Pago'})</span>
-                          </div>
-                          {order.seguimiento_envio && (
-                            <div className="flex items-center gap-2 text-primary font-medium">
-                              <Truck className="h-3 w-3" />
-                              <span>{order.seguimiento_envio.empresa_transporte}: {order.seguimiento_envio.numero_guia} ({order.seguimiento_envio.estado_logistico})</span>
-                            </div>
-                          )}
-                        </div>
+                  return displayedOrders.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Barra de Filtro */}
+                      <div className="flex items-center justify-between bg-muted/40 p-3.5 rounded-xl border border-muted/50 mb-2">
+                        <p className="text-xs text-muted-foreground font-medium">
+                          Mostrando {displayedOrders.length} {showAllOrders ? 'pedidos (historial completo)' : 'pedidos activos'}
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowAllOrders(!showAllOrders)}
+                          className="text-xs font-semibold h-8 rounded-full border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+                        >
+                          {showAllOrders ? 'Ver solo activos' : 'Ver historial completo'}
+                        </Button>
+                      </div>
 
-                        {order.direccion_entrega && (
-                          <div className="bg-muted/40 p-4 rounded-xl border border-muted/50 text-xs space-y-2">
-                            <div>
-                              <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Dirección de despacho:</p>
-                              <p className="text-foreground font-medium">
-                                {order.direccion_entrega.calle} {order.direccion_entrega.numero}
-                                {order.direccion_entrega.departamento && `, Depto/Apto ${order.direccion_entrega.departamento}`}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {order.direccion_entrega.comuna}, {order.direccion_entrega.region}
-                              </p>
-                            </div>
-
-                            {order.comentarios_cliente && (
-                              <div className="pt-2 border-t border-muted/70">
-                                <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Indicaciones de entrega:</p>
-                                <p className="text-foreground italic leading-relaxed bg-background/50 p-2 rounded-lg border">
-                                  "{order.comentarios_cliente}"
+                      {displayedOrders.map((order, idx) => {
+                        const isCanceledOrPending = order.estado?.nombre?.toLowerCase() === 'cancelado' || order.estado?.nombre?.toLowerCase() === 'pendiente';
+                        return (
+                          <div
+                            key={`order-${order.id_pedido}-${idx}`}
+                            className={`flex flex-col gap-4 rounded-lg border p-4 hover:shadow-md transition-all duration-300 ${
+                              isCanceledOrPending ? 'opacity-60 bg-muted/10 border-dashed' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <p className="font-bold text-lg font-mono">SAG-{String(order.id_pedido).padStart(8, '0')}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(order.fecha_pedido).toLocaleDateString('es-CL')}
                                 </p>
+                              </div>
+                              <Badge className={getStatusColor(order.estado?.nombre || 'Pendiente')}>
+                                {(() => {
+                                  const nombre = order.estado?.nombre || 'Pendiente'
+                                  if (nombre === 'devolucion_solicitada') return 'Devolución Solicitada'
+                                  if (nombre === 'devolucion_aprobada') return 'Devolución Aprobada'
+                                  if (nombre === 'devolucion_rechazada') return 'Devolución Rechazada'
+                                  if (nombre === 'reembolsado') return 'Reembolsado'
+                                  return nombre
+                                })()}
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-4 my-2">
+                              {order.detalle_pedidos.map((det: any, idx: number) => (
+                                <div 
+                                  key={`${det.productos?.nombre}-${det.color}-${det.talla}-${idx}`} 
+                                  className="flex items-center gap-4 bg-muted/20 p-3 rounded-xl border border-muted/30"
+                                >
+                                  <div className="h-16 w-16 bg-muted rounded-lg overflow-hidden shrink-0 flex items-center justify-center border relative">
+                                    {det.productos?.imagen_url && det.productos?.imagen_url !== '/placeholder.jpg' ? (
+                                      <img 
+                                        src={det.productos.imagen_url} 
+                                        alt={det.productos.nombre} 
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <Package className="h-6 w-6 text-muted-foreground/30" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold truncate">{det.productos?.nombre}</p>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                                      <span>Talla: {det.talla}</span>
+                                      <span>Color: {det.color}</span>
+                                      <span>Cant: {det.cantidad}</span>
+                                    </div>
+                                    {det.sku && (
+                                      <p className="text-[10px] font-mono text-muted-foreground mt-1 uppercase">
+                                        SKU: {det.sku}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <p className="text-sm font-bold">{formatPrice(det.precio_unitario * det.cantidad)}</p>
+                                    <p className="text-[10px] text-muted-foreground">{det.cantidad}x {formatPrice(det.precio_unitario)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground mt-2">
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-3 w-3" />
+                                <span>Pago: {order.pagos?.[0]?.metodo_pago || 'Pendiente'} ({order.pagos?.[0]?.estado_pago || 'Pendiente de Pago'})</span>
+                              </div>
+                              {order.seguimiento_envio && (
+                                <div className="flex items-center gap-2 text-primary font-medium">
+                                  <Truck className="h-3 w-3" />
+                                  <span>{order.seguimiento_envio.empresa_transporte}: {order.seguimiento_envio.numero_guia} ({order.seguimiento_envio.estado_logistico})</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {order.direccion_entrega && (
+                              <div className="bg-muted/40 p-4 rounded-xl border border-muted/50 text-xs space-y-2">
+                                <div>
+                                  <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Dirección de despacho:</p>
+                                  <p className="text-foreground font-medium">
+                                    {order.direccion_entrega.calle} {order.direccion_entrega.numero}
+                                    {order.direccion_entrega.departamento && `, Depto/Apto ${order.direccion_entrega.departamento}`}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    {order.direccion_entrega.comuna}, {order.direccion_entrega.region}
+                                  </p>
+                                </div>
+
+                                {order.comentarios_cliente && (
+                                  <div className="pt-2 border-t border-muted/70">
+                                    <p className="font-bold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Indicaciones de entrega:</p>
+                                    <p className="text-foreground italic leading-relaxed bg-background/50 p-2 rounded-lg border">
+                                      "{order.comentarios_cliente}"
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold">Total</span>
+                              <span className="font-bold text-xl">{formatPrice(order.total_pagado)}</span>
+                            </div>
+
+                            {order.estado?.nombre === 'entregado' && (
+                              <div className="flex justify-end gap-2 pt-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-xs border-amber-600 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-full"
+                                  onClick={() => {
+                                    setSelectedOrderForReturn(order)
+                                    setIsReturnModalOpen(true)
+                                  }}
+                                >
+                                  Solicitar Devolución
+                                </Button>
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center gap-1.5"
+                                  onClick={() => {
+                                    setSelectedOrderForRating(order)
+                                    const initialRatings: Record<number, { puntuacion: number, comentario: string }> = {}
+                                    order.detalle_pedidos.forEach((det: any) => {
+                                      initialRatings[det.id_producto] = { puntuacion: 5, comentario: '' }
+                                    })
+                                    setRatingsData(initialRatings)
+                                    setIsRatingModalOpen(true)
+                                  }}
+                                >
+                                  <Star className="h-3 w-3 fill-current text-yellow-300" />
+                                  Calificar Productos
+                                </Button>
                               </div>
                             )}
                           </div>
-                        )}
-
-                        <Separator />
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold">Total</span>
-                          <span className="font-bold text-xl">{formatPrice(order.total_pagado)}</span>
-                        </div>
-
-                        {order.estado?.nombre === 'entregado' && (
-                          <div className="flex justify-end pt-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-xs border-amber-600 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                              onClick={() => {
-                                setSelectedOrderForReturn(order)
-                                setIsReturnModalOpen(true)
-                              }}
-                            >
-                              Solicitar Devolución
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Aun no tienes pedidos</p>
-                    <Button className="mt-4" asChild>
-                      <Link href="/categoria/hombre">Explorar Productos</Link>
-                    </Button>
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Aun no tienes pedidos activos</p>
+                      {realOrders.length > 0 && (
+                        <Button className="mt-4" onClick={() => setShowAllOrders(true)} variant="outline">
+                          Ver pedidos cancelados o pendientes
+                        </Button>
+                      )}
+                      <Button className="mt-4 ml-2" asChild>
+                        <Link href="/categoria/hombre">Explorar Productos</Link>
+                      </Button>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
@@ -700,7 +819,7 @@ function ProfileContent() {
                   )}
 
                   {direcciones.map((dir, idx) => (
-                    <div key={dir.id_direccion} className="rounded-lg border p-4 bg-muted/20">
+                    <div key={`dir-${dir.id_direccion}-${idx}`} className="rounded-lg border p-4 bg-muted/20">
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
@@ -806,8 +925,8 @@ function ProfileContent() {
                   </div>
                 ) : userMessages.length > 0 ? (
                   <div className="space-y-6">
-                    {userMessages.map((msg) => (
-                      <div key={msg.id} className="border rounded-2xl p-5 space-y-4 hover:shadow-sm transition-shadow">
+                    {userMessages.map((msg, idx) => (
+                      <div key={`msg-${msg.id}-${idx}`} className="border rounded-2xl p-5 space-y-4 hover:shadow-sm transition-shadow">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="font-semibold capitalize">
@@ -993,6 +1112,140 @@ function ProfileContent() {
                   onClick={handleSubmitReturn}
                 >
                   {isSubmittingReturn ? 'Enviando...' : 'Enviar Solicitud'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Calificación de Productos */}
+      <Dialog open={isRatingModalOpen} onOpenChange={(open) => {
+        setIsRatingModalOpen(open)
+        if (!open) {
+          setRatingsData({})
+          setRatingError('')
+          setRatingSuccess('')
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 fill-current text-yellow-400" />
+              Valorar mis Productos
+            </DialogTitle>
+            <DialogDescription>
+              Comparte tu experiencia para ayudar a otros compradores. Puedes calificar de 1 a 5 estrellas y dejar un comentario opcional para cada producto.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrderForRating && (
+            <div className="space-y-6 pt-4">
+              {selectedOrderForRating.detalle_pedidos.map((det: any, idx: number) => {
+                const prodId = det.id_producto
+                const ratingInfo = ratingsData[prodId] || { puntuacion: 5, comentario: '' }
+
+                return (
+                  <div key={idx} className="bg-muted/30 p-4 rounded-xl border border-muted/50 space-y-3">
+                    <div className="flex gap-3 items-center">
+                      <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden border shrink-0 flex items-center justify-center">
+                        {det.productos?.imagen_url && det.productos?.imagen_url !== '/placeholder.jpg' ? (
+                          <img 
+                            src={det.productos.imagen_url} 
+                            alt={det.productos.nombre} 
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Package className="h-5 w-5 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate text-foreground">{det.productos?.nombre}</p>
+                        <p className="text-xs text-muted-foreground">Talla: {det.talla} | Color: {det.color}</p>
+                      </div>
+                    </div>
+
+                    {/* Selector de Estrellas */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-muted-foreground">Calificación (Estrellas)</Label>
+                      <div className="flex gap-1.5 items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => {
+                              setRatingsData(prev => ({
+                                ...prev,
+                                [prodId]: { ...prev[prodId], puntuacion: star }
+                              }))
+                            }}
+                            className="p-1 hover:scale-110 transition-transform focus:outline-none"
+                          >
+                            <Star 
+                              className={`h-6 w-6 transition-colors ${
+                                star <= ratingInfo.puntuacion 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-muted-foreground/30 fill-transparent'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                        <span className="text-xs font-medium ml-2 text-foreground">
+                          {ratingInfo.puntuacion === 5 ? '¡Excelente!' :
+                           ratingInfo.puntuacion === 4 ? 'Muy bueno' :
+                           ratingInfo.puntuacion === 3 ? 'Bueno' :
+                           ratingInfo.puntuacion === 2 ? 'Regular' : 'Malo'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Comentario Opcional */}
+                    <div className="space-y-1">
+                      <Label htmlFor={`comment-${prodId}`} className="text-xs font-semibold text-muted-foreground">Comentario (Opcional)</Label>
+                      <Textarea
+                        id={`comment-${prodId}`}
+                        placeholder="¿Qué tal te parecieron? (calidad, comodidad, talla...)"
+                        value={ratingInfo.comentario}
+                        onChange={(e) => {
+                          setRatingsData(prev => ({
+                            ...prev,
+                            [prodId]: { ...prev[prodId], comentario: e.target.value }
+                          }))
+                        }}
+                        maxLength={250}
+                        className="min-h-[60px] resize-none text-xs"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+
+              {ratingError && (
+                <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">
+                  {ratingError}
+                </p>
+              )}
+
+              {ratingSuccess && (
+                <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                  {ratingSuccess}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 rounded-full"
+                  onClick={() => setIsRatingModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full" 
+                  disabled={isSubmittingRating || !!ratingSuccess}
+                  onClick={handleSubmitRatings}
+                >
+                  {isSubmittingRating ? 'Guardando...' : 'Enviar Calificaciones'}
                 </Button>
               </div>
             </div>

@@ -16,3 +16,9 @@ node_modules
 .next/
 .DS_Store
 scratch/
+
+# User presentation and docx artifacts
+*.png
+*.pdf
+*.docx
+*.zip

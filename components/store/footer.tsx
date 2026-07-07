@@ -9,7 +9,6 @@ const footerLinks = {
     { name: 'Mujer', href: '/categoria/mujer' },
     { name: 'Niños', href: '/categoria/nino' },
     { name: 'Ofertas', href: '/ofertas' },
-    { name: 'Nuevos', href: '/nuevos' },
   ],
   ayuda: [
     { name: 'Guía de Tallas', href: '/guia-tallas' },
@@ -70,7 +69,7 @@ export function Footer() {
               </a>
               <p className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Santiago, Chile
+                Los Ángeles, Chile
               </p>
             </div>
 

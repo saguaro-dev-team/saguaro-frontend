@@ -117,7 +117,7 @@ function ContactForm() {
                 </div>
                 <div>
                   <h4 className="font-bold">Ubicación</h4>
-                  <p className="text-sm text-muted-foreground">Santiago, Chile</p>
+                  <p className="text-sm text-muted-foreground">Los Ángeles, Chile</p>
                 </div>
               </div>
             </div>
