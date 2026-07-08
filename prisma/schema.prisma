@@ -344,6 +344,7 @@ model devolucion {
   id_devolucion     Int       @id @default(autoincrement())
   id_pedido         Int
   id_producto       Int
+  cantidad          Int       @default(1)
   motivo            String    @db.VarChar(255)
   estado_devolucion String    @db.VarChar(50)
   fecha_solicitud   DateTime  @default(now()) @db.Timestamp(6)

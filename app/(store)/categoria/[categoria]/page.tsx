@@ -31,6 +31,7 @@ const categoryNames: Record<string, string> = {
   hombre: 'Hombre',
   mujer: 'Mujer',
   nino: 'Niños',
+  todos: 'Todos',
 }
 
 const genreLabels: Record<string, string> = {
@@ -43,6 +44,7 @@ const categoryDescriptions: Record<string, string> = {
   hombre: 'Descubre nuestra colección de calzado barefoot para hombre. Desde running hasta casual, encuentra el par perfecto.',
   mujer: 'Calzado barefoot diseñado para la mujer moderna. Estilo, comodidad y salud en cada paso.',
   nino: 'Calzado barefoot para niños que favorece el desarrollo natural del pie. Libertad para crecer.',
+  todos: 'Explora nuestra colección completa de calzado barefoot para toda la familia.',
 }
 
 const productTypes: { value: ProductType; label: string }[] = [

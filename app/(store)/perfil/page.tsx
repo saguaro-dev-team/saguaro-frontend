@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getUserAddresses, addAddress, updateUserProfile, getUserProfile } from '@/app/actions/profile'
 import { getRegiones } from '@/app/actions/location'
 import { getUserOrders } from '@/app/actions/orders'
-import { cleanChileanPhone } from '@/lib/utils'
+import { cleanChileanPhone, formatRut, validateRut } from '@/lib/utils'
 import { getUserContactMessages } from '@/app/actions/contact'
 import { createReturnRequest } from '@/app/actions/returns'
 import { createProductRating } from '@/app/actions/ratings'
@@ -85,6 +85,7 @@ function ProfileContent() {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
   const [selectedOrderForReturn, setSelectedOrderForReturn] = useState<any | null>(null)
   const [selectedProductForReturn, setSelectedProductForReturn] = useState('')
+  const [returnQuantity, setReturnQuantity] = useState(1)
   const [returnReason, setReturnReason] = useState('')
   const [returnComments, setReturnComments] = useState('')
   const [bankBanco, setBankBanco] = useState('')
@@ -94,6 +95,10 @@ function ProfileContent() {
   const [bankNumeroCuenta, setBankNumeroCuenta] = useState('')
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
   const [returnError, setReturnError] = useState('')
+
+  // Return Label State
+  const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<any | null>(null)
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false)
 
   // Valoraciones State
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false)
@@ -175,6 +180,10 @@ function ProfileContent() {
       setReturnError('Por favor ingresa comentarios descriptivos.')
       return
     }
+    if (bankRut && !validateRut(bankRut)) {
+      setReturnError('Por favor ingresa un RUT válido para el titular de la cuenta.')
+      return
+    }
 
     setIsSubmittingReturn(true)
 
@@ -196,6 +205,7 @@ function ProfileContent() {
     const res = await createReturnRequest({
       id_pedido: selectedOrderForReturn.id_pedido,
       id_producto: matchingDetail.id_producto,
+      cantidad: returnQuantity,
       motivo: returnReason,
       comentarios: returnComments,
       bancoInfo: bancoInfo || undefined
@@ -218,6 +228,7 @@ function ProfileContent() {
       setReturnReason('')
       setReturnComments('')
       setSelectedProductForReturn('')
+      setReturnQuantity(1)
       setBankBanco('')
       setBankTipoCuenta('')
       setBankRut('')
@@ -777,6 +788,22 @@ function ProfileContent() {
                                 </Button>
                               </div>
                             )}
+
+                            {order.estado?.nombre?.toLowerCase() === 'devolucion_aprobada' && (
+                              <div className="flex justify-end gap-2 pt-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-xs border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-full font-bold"
+                                  onClick={() => {
+                                    setSelectedOrderForLabel(order)
+                                    setIsLabelModalOpen(true)
+                                  }}
+                                >
+                                  Ver Etiqueta de Retorno
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -996,6 +1023,7 @@ function ProfileContent() {
           setReturnReason('')
           setReturnComments('')
           setSelectedProductForReturn('')
+          setReturnQuantity(1)
           setBankBanco('')
           setBankTipoCuenta('')
           setBankRut('')
@@ -1016,7 +1044,13 @@ function ProfileContent() {
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label>1. Selecciona el calzado a devolver</Label>
-                <Select value={selectedProductForReturn} onValueChange={setSelectedProductForReturn}>
+                <Select 
+                  value={selectedProductForReturn} 
+                  onValueChange={(val) => {
+                    setSelectedProductForReturn(val)
+                    setReturnQuantity(1)
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Elige un producto de tu pedido" />
                   </SelectTrigger>
@@ -1032,6 +1066,36 @@ function ProfileContent() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {(() => {
+                const matchingDetail = selectedOrderForReturn.detalle_pedidos.find(
+                  (det: any, idx: number) => String(det.sku || idx) === selectedProductForReturn
+                )
+                const maxReturnQty = matchingDetail ? matchingDetail.cantidad : 1
+                if (selectedProductForReturn && maxReturnQty > 1) {
+                  return (
+                    <div className="space-y-2">
+                      <Label>Cantidad a devolver (Máximo {maxReturnQty})</Label>
+                      <Select 
+                        value={String(returnQuantity)} 
+                        onValueChange={(val) => setReturnQuantity(parseInt(val))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona la cantidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: maxReturnQty }, (_, i) => i + 1).map((qty) => (
+                            <SelectItem key={qty} value={String(qty)}>
+                              {qty} {qty === 1 ? 'unidad' : 'unidades'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
+                }
+                return null
+              })()}
 
               <div className="space-y-2">
                 <Label>2. Motivo de la Devolución</Label>
@@ -1071,7 +1135,7 @@ function ProfileContent() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="bankRut" className="text-xs">RUT Titular</Label>
-                    <Input id="bankRut" value={bankRut} onChange={(e) => setBankRut(e.target.value)} placeholder="12.345.678-9" maxLength={15} className="h-9 text-xs" />
+                    <Input id="bankRut" value={bankRut} onChange={(e) => setBankRut(formatRut(e.target.value))} placeholder="12.345.678-9" maxLength={15} className="h-9 text-xs" />
                   </div>
                 </div>
 
@@ -1246,6 +1310,147 @@ function ProfileContent() {
                   onClick={handleSubmitRatings}
                 >
                   {isSubmittingRating ? 'Guardando...' : 'Enviar Calificaciones'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Etiqueta de Retorno */}
+      <Dialog open={isLabelModalOpen} onOpenChange={setIsLabelModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Etiqueta de Despacho de Devolución</DialogTitle>
+            <DialogDescription>
+              Imprime esta etiqueta y pégala en la caja del calzado para realizar el envío de retorno.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrderForLabel && (
+            <div className="space-y-6 pt-4">
+              {/* Contenedor Etiqueta de Envio (Estilo Chilexpress) */}
+              <div id="print-label-area" className="border-2 border-black p-4 bg-white text-black font-sans text-xs">
+                {/* Cabecera */}
+                <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-3">
+                  <div>
+                    <h2 className="text-lg font-black tracking-tight">CHILEXPRESS</h2>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Devolución e-Commerce</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[10px]">SERVICIO: ENCOMIENDA</p>
+                    <p className="font-mono text-[9px]">ID: SAG-{String(selectedOrderForLabel.id_pedido).padStart(8, '0')}</p>
+                  </div>
+                </div>
+
+                {/* Direcciones (Remitente y Destinatario) */}
+                <div className="grid grid-cols-2 gap-4 border-b-2 border-black pb-3 mb-3">
+                  <div>
+                    <p className="font-bold uppercase border-b border-black pb-0.5 mb-1 text-[9px]">REMITENTE (CLIENTE):</p>
+                    <p className="font-semibold">{selectedOrderForLabel.direccion_entrega?.calle} {selectedOrderForLabel.direccion_entrega?.numero}</p>
+                    {selectedOrderForLabel.direccion_entrega?.departamento && (
+                      <p className="text-[10px]">Depto: {selectedOrderForLabel.direccion_entrega.departamento}</p>
+                    )}
+                    <p className="text-[10px]">{selectedOrderForLabel.direccion_entrega?.comuna}, {selectedOrderForLabel.direccion_entrega?.region}</p>
+                    <p className="text-[10px] mt-1 font-semibold">{user?.nombre} {user?.apellido}</p>
+                    <p className="text-[10px]">Fono: {user?.telefono || 'No registrado'}</p>
+                  </div>
+                  <div className="border-l border-black pl-3">
+                    <p className="font-bold uppercase border-b border-black pb-0.5 mb-1 text-[9px]">DESTINATARIO (TIENDA):</p>
+                    <p className="font-bold">Saguaro Barefoot Chile</p>
+                    <p className="font-semibold">Av. Vitacura 5250, Of. 402</p>
+                    <p className="text-[10px]">Vitacura, Región Metropolitana</p>
+                    <p className="text-[10px] mt-1">Fono: +56 9 8765 4321</p>
+                    <p className="text-[9px] font-bold text-muted-foreground mt-1">Ref: BODEGA DEVOLUCIONES</p>
+                  </div>
+                </div>
+
+                {/* Código de barras y QR */}
+                <div className="flex flex-col items-center justify-center py-4 border-b-2 border-black mb-3">
+                  {/* Código de barras simulado por CSS */}
+                  <div className="h-14 w-full max-w-[280px] bg-black mb-1" style={{
+                    background: 'repeating-linear-gradient(90deg, #000, #000 3px, #fff 3px, #fff 6px, #000 6px, #000 7px, #fff 7px, #fff 10px, #000 10px, #000 14px, #fff 14px, #fff 16px)'
+                  }} />
+                  <p className="font-mono text-[10px] tracking-[4px] font-bold">DEV-SAG-{String(selectedOrderForLabel.id_pedido).padStart(8, '0')}</p>
+                </div>
+
+                {/* QR Code de verdad (usando la API gratuita qrserver) */}
+                <div className="flex justify-between items-center">
+                  <div className="space-y-1">
+                    <p className="font-bold text-[10px]">INSTRUCCIONES:</p>
+                    <p className="text-[9px] text-muted-foreground leading-snug">
+                      1. Guarda el calzado en su embalaje original.<br />
+                      2. Pega esta etiqueta de forma visible en la caja.<br />
+                      3. Llévalo a cualquier sucursal Chilexpress.<br />
+                      4. El costo de este envío de retorno es **$0 (Gratuito)**.
+                    </p>
+                  </div>
+                  <div className="h-20 w-20 border p-1 shrink-0 bg-white">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=DEV-SAG-${String(selectedOrderForLabel.id_pedido).padStart(8, '0')}`}
+                      alt="Código QR de Devolución"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón de Acción */}
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsLabelModalOpen(false)}
+                >
+                  Cerrar
+                </Button>
+                <Button 
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                  onClick={() => {
+                    const printContent = document.getElementById('print-label-area')?.innerHTML
+                    
+                    if (printContent) {
+                      const printWindow = window.open('', '_blank')
+                      if (printWindow) {
+                        printWindow.document.write(`
+                          <html>
+                            <head>
+                              <title>Imprimir Etiqueta de Retorno</title>
+                              <style>
+                                body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
+                                #label { border: 2px solid black; padding: 20px; width: 400px; }
+                                .flex { display: flex; justify-content: space-between; }
+                                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+                                .border-b-2 { border-bottom: 2px solid black; }
+                                .pb-2 { padding-bottom: 8px; }
+                                .pb-3 { padding-bottom: 12px; }
+                                .mb-3 { margin-bottom: 12px; }
+                                .text-lg { font-size: 18px; font-weight: bold; }
+                                .font-mono { font-family: monospace; }
+                                .font-bold { font-weight: bold; }
+                                .text-right { text-align: right; }
+                                .h-14 { height: 56px; }
+                                .w-full { width: 100%; }
+                                .tracking-widest { letter-spacing: 4px; }
+                                .mt-1 { margin-top: 4px; }
+                                .leading-snug { line-height: 1.3; }
+                                .h-20 { height: 80px; }
+                                .w-20 { width: 80px; }
+                                .border { border: 1px solid #ccc; }
+                                .p-1 { padding: 4px; }
+                              </style>
+                            </head>
+                            <body onload="window.print();window.close();">
+                              <div id="label">${printContent}</div>
+                            </body>
+                          </html>
+                        `)
+                        printWindow.document.close()
+                      }
+                    }
+                  }}
+                >
+                  Imprimir Etiqueta
                 </Button>
               </div>
             </div>

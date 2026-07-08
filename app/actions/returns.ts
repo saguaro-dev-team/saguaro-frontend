@@ -14,12 +14,13 @@ function safeRevalidatePath(p: string) {
 export async function createReturnRequest(data: {
   id_pedido: number
   id_producto: number
+  cantidad?: number
   motivo: string
   comentarios: string
   bancoInfo?: string
 }) {
   try {
-    const { id_pedido, id_producto, motivo, comentarios, bancoInfo } = data
+    const { id_pedido, id_producto, cantidad = 1, motivo, comentarios, bancoInfo } = data
 
     // Verificar si el pedido existe
     const order = await prisma.pedido.findUnique({
@@ -60,6 +61,7 @@ export async function createReturnRequest(data: {
       data: {
         id_pedido,
         id_producto,
+        cantidad,
         motivo: motivoConcatenado,
         estado_devolucion: 'pendiente'
       }
@@ -137,6 +139,7 @@ export async function getAdminReturnRequests() {
         id_devolucion: r.id_devolucion,
         id_pedido: r.id_pedido,
         id_producto: r.id_producto,
+        cantidad: r.cantidad,
         motivo: r.motivo,
         estado_devolucion: r.estado_devolucion,
         fecha_solicitud: r.fecha_solicitud,
@@ -226,7 +229,7 @@ export async function updateReturnRequestStatus(
 
       // 2. Incrementar stock de la variante devuelta
       const oldStock = dev.producto.stock
-      const newStock = oldStock + 1
+      const newStock = oldStock + dev.cantidad
 
       await prisma.producto.update({
         where: { id_producto: dev.id_producto },
@@ -243,7 +246,7 @@ export async function updateReturnRequestStatus(
             accion: 'AGREGAR',
             sku_producto: dev.producto.codigo_sku,
             nombre_producto: dev.producto.modelo.nombre_modelo,
-            detalles: `Reingreso automático por devolución completada del Pedido SAG-${String(orderId).padStart(8, '0')}.`,
+            detalles: `Reingreso automático por devolución completada (${dev.cantidad} pares) del Pedido SAG-${String(orderId).padStart(8, '0')}.`,
             stock_anterior: oldStock,
             stock_nuevo: newStock
           }

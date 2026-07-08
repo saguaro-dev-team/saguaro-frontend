@@ -268,7 +268,7 @@ export default function AdminDevolucionesPage() {
                       </TableCell>
                       <TableCell>
                         <p className="font-semibold text-sm">{r.producto.modelo.nombre_modelo}</p>
-                        <p className="text-xs text-muted-foreground">Color: {r.producto.color}, Talla: {r.producto.talla}</p>
+                        <p className="text-xs text-muted-foreground">Cant: {r.cantidad} | Color: {r.producto.color}, Talla: {r.producto.talla}</p>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{r.producto.codigo_sku}</TableCell>
                       <TableCell>
@@ -335,7 +335,7 @@ export default function AdminDevolucionesPage() {
                     </div>
                     <div>
                       <p className="font-bold text-sm">{selectedReturn.producto.modelo.nombre_modelo}</p>
-                      <p className="text-xs text-muted-foreground">Talla: {selectedReturn.producto.talla} | Color: {selectedReturn.producto.color}</p>
+                      <p className="text-xs text-muted-foreground">Cant. a devolver: {selectedReturn.cantidad} | Talla: {selectedReturn.producto.talla} | Color: {selectedReturn.producto.color}</p>
                       <p className="text-xs font-mono text-muted-foreground mt-0.5">SKU: {selectedReturn.producto.codigo_sku}</p>
                     </div>
                   </div>

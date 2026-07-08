@@ -1,5 +1,33 @@
 [
   {
+    "id": "1783477875978",
+    "fecha": "2026-07-08T02:31:15.978Z",
+    "nombre": "Sistema Saguaro",
+    "email": "contacto@saguaro.cl",
+    "motivo": "soporte",
+    "mensaje": "La solicitud de devolución para tu pedido SAG-00000027 ha sido APROBADA. Por favor, procede con las instrucciones de despacho enviadas a tu correo.",
+    "numero_pedido": "#27",
+    "linkedin_url": null,
+    "cv_url": null,
+    "leido": false,
+    "respondido": false,
+    "usuarioId": "7"
+  },
+  {
+    "id": "1783477639410",
+    "fecha": "2026-07-08T02:27:19.410Z",
+    "nombre": "Sistema Saguaro",
+    "email": "contacto@saguaro.cl",
+    "motivo": "soporte",
+    "mensaje": "Hemos recibido tu solicitud de devolución para el producto en el pedido SAG-00000027. Nuestro equipo revisará la solicitud a la brevedad.",
+    "numero_pedido": "#27",
+    "linkedin_url": null,
+    "cv_url": null,
+    "leido": false,
+    "respondido": false,
+    "usuarioId": "7"
+  },
+  {
     "id": "1783217306268",
     "fecha": "2026-07-05T02:08:26.268Z",
     "nombre": "Atacante XSS",
