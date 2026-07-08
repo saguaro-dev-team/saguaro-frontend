@@ -134,7 +134,7 @@ function ProfileContent() {
       const ratingInfo = ratingsData[prodId]
       
       const res = await createProductRating({
-        id_usuario: user.id,
+        id_usuario: parseInt(user.id),
         id_producto: prodId,
         puntuacion: ratingInfo.puntuacion,
         comentario: ratingInfo.comentario
